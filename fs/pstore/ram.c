@@ -676,7 +676,6 @@ fail_buf:
 	kfree(cxt->pstore.buf);
 fail_clear:
 	cxt->pstore.bufsize = 0;
-	cxt->max_dump_cnt = 0;
 	kfree(cxt->mprz);
 fail_init_mprz:
 	kfree(cxt->fprz);
