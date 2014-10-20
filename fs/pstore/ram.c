@@ -627,7 +627,6 @@ static struct platform_driver ramoops_driver = {
 	.remove		= ramoops_remove,
 	.driver		= {
 		.name	= "ramoops",
-		.owner	= THIS_MODULE,
 	},
 };
 
