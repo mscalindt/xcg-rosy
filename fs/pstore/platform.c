@@ -715,6 +715,12 @@ int pstore_register(struct pstore_info *psi)
 		add_timer(&pstore_timer);
 	}
 
+	/*
+	 * Update the module parameter backend, so it is visible
+	 * through /sys/module/pstore/parameters/backend
+	 */
+	backend = psi->name;
+
 	module_put(owner);
 
 	pr_info("Registered %s as persistent store backend\n", psi->name);
