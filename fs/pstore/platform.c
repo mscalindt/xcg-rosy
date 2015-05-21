@@ -506,7 +506,7 @@ static void pstore_dump(struct kmsg_dumper *dumper,
 		bool compressed;
 		size_t total_len;
 
-		if (big_oops_buf) {
+		if (big_oops_buf && is_locked) {
 			dst = big_oops_buf;
 			hsize = sprintf(dst, "%s#%d Part%d\n", why,
 							oopscount, part);
