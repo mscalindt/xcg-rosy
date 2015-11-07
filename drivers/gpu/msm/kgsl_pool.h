@@ -23,7 +23,7 @@ kgsl_gfp_mask(unsigned int page_order)
 
 	if (page_order > 0)
 		gfp_mask |= __GFP_COMP | __GFP_NORETRY |
-			__GFP_NO_KSWAPD | __GFP_NOWARN;
+			__GFP_KSWAPD_RECLAIM | __GFP_NOWARN;
 	else
 		gfp_mask |= GFP_KERNEL;
 
