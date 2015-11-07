@@ -1387,7 +1387,7 @@ int netlink_broadcast_filtered(struct sock *ssk, struct sk_buff *skb, u32 portid
 	consume_skb(info.skb2);
 
 	if (info.delivered) {
-		if (info.congested && (allocation & __GFP_WAIT))
+		if (info.congested && gfpflags_allow_blocking(allocation))
 			yield();
 		return 0;
 	}
@@ -2000,13 +2000,13 @@ static int netlink_dump(struct sock *sk)
 	if (alloc_min_size < nlk->max_recvmsg_len) {
 		alloc_size = nlk->max_recvmsg_len;
 		skb = netlink_alloc_skb(sk, alloc_size, nlk->portid,
-					(GFP_KERNEL & ~__GFP_WAIT) |
+					(GFP_KERNEL & ~__GFP_DIRECT_RECLAIM) |
 					__GFP_NOWARN | __GFP_NORETRY);
 	}
 	if (!skb) {
 		alloc_size = alloc_min_size;
 		skb = netlink_alloc_skb(sk, alloc_size, nlk->portid,
-					(GFP_KERNEL & ~__GFP_WAIT));
+					(GFP_KERNEL & ~__GFP_DIRECT_RECLAIM));
 	}
 	if (!skb)
 		goto errout_skb;

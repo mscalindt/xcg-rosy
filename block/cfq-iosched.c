@@ -3614,7 +3614,7 @@ retry:
 		if (new_cfqq) {
 			cfqq = new_cfqq;
 			new_cfqq = NULL;
-		} else if (gfp_mask & __GFP_WAIT) {
+		} else if (gfpflags_allow_blocking(gfp_mask)) {
 			rcu_read_unlock();
 			spin_unlock_irq(cfqd->queue->queue_lock);
 			new_cfqq = kmem_cache_alloc_node(cfq_pool,
@@ -4229,7 +4229,7 @@ cfq_set_request(struct request_queue *q, struct request *rq, struct bio *bio,
 	const bool is_sync = rq_is_sync(rq);
 	struct cfq_queue *cfqq;
 
-	might_sleep_if(gfp_mask & __GFP_WAIT);
+	might_sleep_if(gfp_mask & __GFP_DIRECT_RECLAIM);
 
 	spin_lock_irq(q->queue_lock);
 

@@ -31,7 +31,7 @@ static int submit(int rw, struct block_device *bdev, sector_t sector,
 	const int bio_rw = rw | REQ_SYNC;
 	struct bio *bio;
 
-	bio = bio_alloc(__GFP_WAIT | __GFP_HIGH, 1);
+	bio = bio_alloc(__GFP_DIRECT_RECLAIM | __GFP_HIGH, 1);
 	bio->bi_iter.bi_sector = sector;
 	bio->bi_bdev = bdev;
 	bio->bi_end_io = end_swap_bio_read;
