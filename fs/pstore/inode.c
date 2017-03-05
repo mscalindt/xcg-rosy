@@ -189,11 +189,12 @@ static int pstore_unlink(struct inode *dir, struct dentry *dentry)
 	struct pstore_private *p = dentry->d_inode->i_private;
 	struct pstore_record *record = p->record;
 
-	if (record->psi->erase)
-		record->psi->erase(record->type, record->id, record->count,
-			      dentry->d_inode->i_ctime, record->psi);
-	else
+	if (!record->psi->erase)
 		return -EPERM;
+
+	mutex_lock(&record->psi->read_mutex);
+	record->psi->erase(record);
+	mutex_unlock(&record->psi->read_mutex);
 
 	return simple_unlink(dir, dentry);
 }
