@@ -290,9 +290,8 @@ bool pstore_is_mounted(void)
  * Load it up with "size" bytes of data from "buf".
  * Set the mtime & ctime to the date that this record was originally stored.
  */
-int pstore_mkfile(struct pstore_record *record)
+int pstore_mkfile(struct dentry *root, struct pstore_record *record)
 {
-	struct dentry		*root = pstore_sb->s_root;
 	struct dentry		*dentry;
 	struct inode		*inode;
 	int			rc = 0;
@@ -300,6 +299,8 @@ int pstore_mkfile(struct pstore_record *record)
 	struct pstore_private	*private, *pos;
 	unsigned long		flags;
 	size_t			size = record->size + record->ecc_notice_size;
+
+	WARN_ON(!mutex_is_locked(&root->d_inode->i_mutex));
 
 	spin_lock_irqsave(&allpstore_lock, flags);
 	list_for_each_entry(pos, &allpstore, list) {
@@ -315,7 +316,7 @@ int pstore_mkfile(struct pstore_record *record)
 		return rc;
 
 	rc = -ENOMEM;
-	inode = pstore_get_inode(pstore_sb);
+	inode = pstore_get_inode(root->d_sb);
 	if (!inode)
 		goto fail;
 	inode->i_mode = S_IFREG | 0444;
@@ -373,11 +374,9 @@ int pstore_mkfile(struct pstore_record *record)
 		break;
 	}
 
-	mutex_lock(&root->d_inode->i_mutex);
-
 	dentry = d_alloc_name(root, name);
 	if (!dentry)
-		goto fail_lockedalloc;
+		goto fail_private;
 
 	inode->i_size = private->total_size = size;
 
@@ -392,18 +391,36 @@ int pstore_mkfile(struct pstore_record *record)
 	list_add(&private->list, &allpstore);
 	spin_unlock_irqrestore(&allpstore_lock, flags);
 
-	mutex_unlock(&root->d_inode->i_mutex);
-
 	return 0;
 
-fail_lockedalloc:
-	mutex_unlock(&root->d_inode->i_mutex);
+fail_private:
 	free_pstore_private(private);
 fail_alloc:
 	iput(inode);
 
 fail:
 	return rc;
+}
+
+/*
+ * Read all the records from the persistent store. Create
+ * files in our filesystem.  Don't warn about -EEXIST errors
+ * when we are re-scanning the backing store looking to add new
+ * error records.
+ */
+void pstore_get_records(int quiet)
+{
+	struct pstore_info *psi = psinfo;
+	struct dentry *root;
+
+	if (!psi || !pstore_sb)
+		return;
+
+	root = pstore_sb->s_root;
+
+	mutex_lock(&root->d_inode->i_mutex);
+	pstore_get_backend_records(psi, root, quiet);
+	mutex_unlock(&root->d_inode->i_mutex);
 }
 
 static int pstore_fill_super(struct super_block *sb, void *data, int silent)
