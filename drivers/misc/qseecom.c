@@ -6985,6 +6985,8 @@ long qseecom_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 {
 	int ret = 0;
 	struct qseecom_dev_handle *data = file->private_data;
+	struct qseecom_ice_data_t ice_data;
+	struct qseecom_encdec_conf_t conf;
 	void __user *argp = (void __user *) arg;
 	bool perf_enabled = false;
 
@@ -7016,6 +7018,25 @@ long qseecom_ioctl(struct file *file, unsigned cmd, unsigned long arg)
 		mutex_unlock(&app_access_lock);
 		if (ret)
 			pr_err("failed qseecom_register_listener: %d\n", ret);
+		break;
+	}
+	case QSEECOM_IOCTL_SET_ICE_INFO: {
+		ret = copy_from_user(&ice_data, argp, sizeof(ice_data));
+		if (ret) {
+			pr_err("copy_from_user failed\n");
+			return -EFAULT;
+		}
+		qcom_ice_set_fde_flag(ice_data.flag);
+		break;
+	}
+	case QSEECOM_IOCTL_SET_ENCDEC_INFO: {
+		ret = copy_from_user(&conf, argp, sizeof(conf));
+		if (ret) {
+			pr_err("copy_from_user failed\n");
+			return -EFAULT;
+		}
+		ret = qcom_ice_set_fde_conf(conf.start_sector, conf.fs_size,
+					conf.index, conf.mode);
 		break;
 	}
 	case QSEECOM_IOCTL_UNREGISTER_LISTENER_REQ: {
