@@ -533,6 +533,18 @@ static void sync_fence_signal_pt(struct sync_pt *pt)
 	}
 }
 
+bool sync_fence_signaled(struct sync_fence *fence)
+{
+	int ret;
+
+	ret = fence->status;
+	if (ret < 0)
+		ret = 0;
+
+	return ret;
+}
+EXPORT_SYMBOL(sync_fence_signaled);
+
 int sync_fence_wait_async(struct sync_fence *fence,
 			  struct sync_fence_waiter *waiter)
 {
