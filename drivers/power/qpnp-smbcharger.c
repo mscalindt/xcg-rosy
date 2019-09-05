@@ -8658,7 +8658,7 @@ static void period_update(struct work_struct *work)
 		return;
 	}
 
-	if (smbchg_debug_mask == 0xFF)
+	if (smbchg_debug_mask == 0xFF) {
 		dump_regs(chip);
 
 		temp		=	get_prop_batt_temp(chip)/10;
@@ -8690,6 +8690,7 @@ static void period_update(struct work_struct *work)
 			old_status = status;
 			old_present = present;
 			old_usb_present = usb_present;
+		}
 		printk_counter = 0;
 	}
 
