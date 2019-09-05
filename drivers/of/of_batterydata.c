@@ -1,4 +1,5 @@
 /* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -19,6 +20,7 @@
 #include <linux/types.h>
 #include <linux/batterydata-lib.h>
 #include <linux/power_supply.h>
+#include <linux/hardware_info.h>
 
 static int of_batterydata_read_lut(const struct device_node *np,
 			int max_cols, int max_rows, int *ncols, int *nrows,
@@ -310,6 +312,9 @@ static int64_t of_batterydata_convert_battery_id_kohm(int batt_id_uv,
 	return resistor_value_kohm;
 }
 
+int battery_type_id = 0 ;
+static char *default_batt_type = "Generic_Battery";
+
 struct device_node *of_batterydata_get_best_profile(
 		const struct device_node *batterydata_container_node,
 		const char *psy_name,  const char  *batt_type)
@@ -322,6 +327,7 @@ struct device_node *of_batterydata_get_best_profile(
 	int delta = 0, best_delta = 0, best_id_kohm = 0, id_range_pct,
 		batt_id_kohm = 0, i = 0, rc = 0, limit = 0;
 	bool in_range = false;
+	bool default_id = false;
 
 	psy = power_supply_get_by_name(psy_name);
 	if (!psy) {
@@ -388,13 +394,29 @@ struct device_node *of_batterydata_get_best_profile(
 	}
 
 	if (best_node == NULL) {
+		for_each_child_of_node(batterydata_container_node, node) {
+				if (default_batt_type != NULL) {
+					rc = of_property_read_string(node, "qcom,battery-type",
+									&battery_type);
+					if (!rc && strcmp(battery_type, default_batt_type) == 0) {
+						best_node = node;
+						best_id_kohm = batt_id_kohm;
+						default_id = true;
+						pr_err("No battery data found, Use default battery data\n");
+						break;
+					}
+				}
+			}
+	}
+
+	if (best_node == NULL) {
 		pr_err("No battery data found\n");
 		return best_node;
 	}
 
 	/* check that profile id is in range of the measured batt_id */
 	if (abs(best_id_kohm - batt_id_kohm) >
-			((best_id_kohm * id_range_pct) / 100)) {
+			((best_id_kohm * id_range_pct) / 100) && !default_id) {
 		pr_err("out of range: profile id %d batt id %d pct %d",
 			best_id_kohm, batt_id_kohm, id_range_pct);
 		return NULL;
@@ -402,8 +424,10 @@ struct device_node *of_batterydata_get_best_profile(
 
 	rc = of_property_read_string(best_node, "qcom,battery-type",
 							&battery_type);
-	if (!rc)
+	if (!rc) {
+		hardwareinfo_set_prop(HARDWARE_BATTERY_ID, battery_type);
 		pr_info("%s found\n", battery_type);
+	}
 	else
 		pr_info("%s found\n", best_node->name);
 

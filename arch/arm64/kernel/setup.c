@@ -62,6 +62,9 @@
 #include <asm/psci.h>
 #include <asm/efi.h>
 #include <asm/system_misc.h>
+#include <asm/bootinfo.h>
+
+extern void pstore_ram_reserve_memory(void);
 
 unsigned int boot_reason;
 EXPORT_SYMBOL(boot_reason);
@@ -243,6 +246,12 @@ static void __init request_standard_resources(void)
 	}
 }
 
+void __init early_init_dt_setup_pureason_arch(unsigned long pu_reason)
+{
+	set_powerup_reason(pu_reason);
+	pr_info("Powerup reason=0x%x\n", get_powerup_reason());
+}
+
 #ifdef CONFIG_BLK_DEV_INITRD
 /*
  * Relocate initrd if it is not completely within the linear mapping.
@@ -363,6 +372,10 @@ void __init setup_arch(char **cmdline_p)
 	 * thread.
 	 */
 	init_thread_info.ttbr0 = virt_to_phys(empty_zero_page);
+#endif
+	
+#ifdef CONFIG_PSTORE
+	pstore_ram_reserve_memory();
 #endif
 
 #ifdef CONFIG_VT
