@@ -1150,4 +1150,15 @@ config TOUCHSCREEN_HIMAX_CHIPSET
 
 source "drivers/input/touchscreen/hxchipset/Kconfig"
 
+config TOUCHSCREEN_FOCALTECH
+	bool "FocalTech 8xxx touchscreens"
+	depends on I2C
+	help
+	  Say Y here if you have FocalTech 8716/8006m touchscreen.
+
+	  If unsure, say N.
+
+source "drivers/input/touchscreen/FT8716/Kconfig"
+source "drivers/input/touchscreen/FT8006m/Kconfig"
+
 endif
