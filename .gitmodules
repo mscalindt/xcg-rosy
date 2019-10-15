@@ -1,0 +1,4 @@
+[submodule "drivers/staging/prima"]
+	path = drivers/staging/prima
+	url = https://github.com/mscalindt/android-vendor-qcom-opensource-wlan-prima.git
+	branch = wlan-driver.lnx.1.9.r4-rel
