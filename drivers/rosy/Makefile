@@ -7,3 +7,4 @@ obj-$(CONFIG_TOUCHSCREEN_ROSY)	+= touchscreen/
 obj-$(CONFIG_LED_ROSY)			+= led/
 obj-$(CONFIG_SOC_ROSY)			+= soc/
 obj-$(CONFIG_PSTORE_ROSY)		+= pstore/
+obj-$(CONFIG_SOUND_ROSY)		+= sound/

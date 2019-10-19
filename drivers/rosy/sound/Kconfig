@@ -1,0 +1,20 @@
+menuconfig SOUND_ROSY
+	bool "Sound drivers"
+	help
+	  Say Y here, and a list of supported sound drivers will be
+	  displayed. This option doesn't affect the kernel.
+
+	  If unsure, say Y.
+
+if SOUND_ROSY
+
+config AW87319_ROSY
+	tristate "AW87319 sound driver"
+	depends on SOUND_ROSY
+	help
+	  Say Y here to compile sound drivers for AWINIC 87319 ASoc
+	  Speaker PA.
+
+	  If unsure, say Y.
+
+endif
