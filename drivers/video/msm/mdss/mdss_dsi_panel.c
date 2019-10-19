@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -22,6 +23,7 @@
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
 #include <linux/string.h>
+#include <linux/hardware_info.h>
 
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
@@ -33,6 +35,9 @@
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
 #define VSYNC_DELAY msecs_to_jiffies(17)
+
+extern char Lcm_name[HARDWARE_MAX_ITEM_LONGTH];
+extern bool is_Lcm_Present;
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
@@ -342,6 +347,7 @@ disp_en_gpio_err:
 	return rc;
 }
 
+extern int tp_gesture_onoff;
 int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
@@ -486,7 +492,10 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			usleep_range(100, 110);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+		if (((tp_gesture_onoff) || (pinfo->pwr_off_rst_pull_high)) && pinfo->panel_dead == 0)
+			gpio_set_value((ctrl_pdata->rst_gpio), 1);
+		else
+			gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
@@ -1684,6 +1693,7 @@ static int mdss_dsi_parse_reset_seq(struct device_node *np,
 	return 0;
 }
 
+extern int panel_dead2tp;
 static bool mdss_dsi_cmp_panel_reg_v2(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	int i, j;
@@ -1700,6 +1710,10 @@ static bool mdss_dsi_cmp_panel_reg_v2(struct mdss_dsi_ctrl_pdata *ctrl)
 			if (ctrl->return_buf[i] !=
 				ctrl->status_value[group + i])
 				break;
+			if (panel_dead2tp) {
+				pr_info("%s: LCD ESD check fail, panel_dead2tp is %d\n ", __func__, panel_dead2tp);
+				break;
+			}
 		}
 
 		if (i == len)
@@ -1914,7 +1928,7 @@ static void mdss_dsi_parse_esd_params(struct device_node *np,
 	pinfo->esd_check_enabled = of_property_read_bool(np,
 		"qcom,esd-check-enabled");
 
-	if (!pinfo->esd_check_enabled)
+	if ((!pinfo->esd_check_enabled) || (!is_Lcm_Present))
 		return;
 
 	ctrl->status_mode = ESD_MAX;
@@ -2799,6 +2813,9 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_reset_seq(np, pinfo->rst_seq, &(pinfo->rst_seq_len),
 		"qcom,mdss-dsi-reset-sequence");
 
+	rc = of_property_read_u32(np, "qcom,mdss-dsi-pwr-off-rst-pull-high", &tmp);
+	pinfo->pwr_off_rst_pull_high = (!rc ? tmp : 0);
+
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->off_cmds,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
 
@@ -2863,7 +2880,12 @@ int mdss_dsi_panel_init(struct device_node *node,
 	} else {
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
+		strcpy(Lcm_name, panel_name);
 	}
+
+	if (!is_Lcm_Present)
+		strcpy(Lcm_name, "");
+
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
@@ -2882,6 +2904,9 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->panel_data.apply_display_setting =
 			mdss_dsi_panel_apply_display_setting;
+	if (is_Lcm_Present) {
+		ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
+	}
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->panel_data.get_idle = mdss_dsi_panel_get_idle_mode;
 	return 0;
