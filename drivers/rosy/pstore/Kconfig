@@ -1,0 +1,23 @@
+menuconfig PSTORE_ROSY
+	bool "Pstore drivers"
+	select PSTORE
+	help
+	  Say Y here, and a list of supported persistent store (pstore)
+	  drivers will be displayed. This option doesn't affect the
+	  kernel.
+
+	  If unsure, say Y.
+
+if PSTORE_ROSY
+
+config LAST_KMSG_ROSY
+	bool "Last kernel messages interface"
+	depends on PSTORE_ROSY
+	help
+	  Say Y here to enable pstore interface used for storing the
+	  last kernel messages. The interface is located in
+	  /sys/fs/pstore/console-ramoops
+
+	  If unsure, say N.
+
+endif
