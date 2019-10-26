@@ -1,4 +1,5 @@
 /* Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -843,6 +844,28 @@ static int fg_sec_masked_write(struct fg_chip *chip, u16 addr, u8 mask, u8 val,
 out:
 	spin_unlock_irqrestore(&chip->sec_access_lock, flags);
 	return rc;
+}
+
+static int area_version_flag;
+static void get_area_version(struct fg_chip *chip)
+{
+	char *boardid_string = NULL;
+	char boardid_start[32] = " ";
+	int India;
+
+	boardid_string = strstr(saved_command_line, "board_id=");
+
+	if (boardid_string != NULL) {
+		strncpy(boardid_start, boardid_string+9, 9);
+		India = strncmp(boardid_start, "S88567CA1", 9);
+		if (!India) {
+			pr_err("India version!\n");
+			area_version_flag = 1;
+		} else {
+			pr_err("Normal version!\n");
+			area_version_flag = 0;
+		}
+	}
 }
 
 #define RIF_MEM_ACCESS_REQ	BIT(7)
@@ -2294,6 +2317,14 @@ static int get_prop_capacity(struct fg_chip *chip)
 		return FULL_CAPACITY;
 	}
 
+	if (((chip->health == POWER_SUPPLY_HEALTH_COOL)
+			|| (chip->health == POWER_SUPPLY_HEALTH_COLD))
+			&& msoc >= 247) {
+		pr_info("wt msoc= %d, chip->health=%d\n", msoc, chip->health);
+		return DIV_ROUND_CLOSEST((msoc - 1) * (FULL_CAPACITY - 2),
+				FULL_SOC_RAW - 2) + 2;
+	}
+
 	return DIV_ROUND_CLOSEST((msoc - 1) * (FULL_CAPACITY - 2),
 			FULL_SOC_RAW - 2) + 1;
 }
@@ -3031,7 +3062,8 @@ out:
 
 static int fg_get_cycle_count(struct fg_chip *chip)
 {
-	int count;
+	int count = 0;
+	int i = 0;
 
 	if (!chip->cyc_ctr.en)
 		return 0;
@@ -3040,9 +3072,33 @@ static int fg_get_cycle_count(struct fg_chip *chip)
 		return -EINVAL;
 
 	mutex_lock(&chip->cyc_ctr.lock);
-	count = chip->cyc_ctr.count[chip->cyc_ctr.id - 1];
+	for (i = 0; i < BUCKET_COUNT; i++)
+		count += chip->cyc_ctr.count[i];
+	count /= BUCKET_COUNT;
 	mutex_unlock(&chip->cyc_ctr.lock);
 	return count;
+}
+
+static int fg_set_cycle_count(struct fg_chip *chip, int value)
+{
+	int rc = 0;
+	int i = 0;
+	int address;
+	u8 data[2];
+
+	for (i = 0; i < BUCKET_COUNT; i++) {
+		data[0] = value & 0xFF;
+		data[1] = value >> 8;
+
+		address = BATT_CYCLE_NUMBER_REG + i * 2;
+		rc = fg_mem_write(chip, data, address, 2, BATT_CYCLE_OFFSET, 0);
+		if (rc < 0)
+			pr_err("failed to write BATT_CYCLE[%d] rc=%d\n", i, rc);
+		else
+			chip->cyc_ctr.count[i] = value;
+	}
+
+	return rc;
 }
 
 static void half_float_to_buffer(int64_t uval, u8 *buffer)
@@ -4787,6 +4843,10 @@ static int fg_power_set_property(struct power_supply *psy,
 			schedule_work(&chip->set_resume_soc_work);
 		}
 		break;
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
+		rc = fg_set_cycle_count(chip, val->intval);
+		pr_info("Cycle count is modified to %d by userspace\n", val->intval);
+		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT_ID:
 		if ((val->intval > 0) && (val->intval <= BUCKET_COUNT)) {
 			chip->cyc_ctr.id = val->intval;
@@ -4828,6 +4888,7 @@ static int fg_property_is_writeable(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CYCLE_COUNT_ID:
 	case POWER_SUPPLY_PROP_BATTERY_INFO:
 	case POWER_SUPPLY_PROP_BATTERY_INFO_ID:
+	case POWER_SUPPLY_PROP_CYCLE_COUNT:
 		return 1;
 	default:
 		break;
@@ -6306,6 +6367,42 @@ fail:
 	return -EINVAL;
 }
 
+#define REDO_BATID_DURING_FIRST_EST	BIT(4)
+static void fg_hw_restart(struct fg_chip *chip)
+{
+	u8 reg, rc;
+	int batt_id;
+	u8 data[4];
+
+	reg = 0x80;
+	fg_masked_write(chip, 0x4150, reg, reg, 1);
+	fg_masked_write(chip, chip->soc_base + SOC_RESTART, 0xFF, 0, 1);
+	mdelay(5);
+
+	reg = REDO_BATID_DURING_FIRST_EST|REDO_FIRST_ESTIMATE;
+	fg_masked_write(chip, chip->soc_base + SOC_RESTART, reg, reg, 1);
+	mdelay(5);
+
+	reg = REDO_BATID_DURING_FIRST_EST | REDO_FIRST_ESTIMATE | RESTART_GO;
+	fg_masked_write(chip, chip->soc_base + SOC_RESTART, reg, reg, 1);
+	mdelay(1000);
+
+	fg_masked_write(chip, chip->soc_base + SOC_RESTART, 0xFF, 0, 1);
+	fg_masked_write(chip, 0x4150, 0x80, 0, 1);
+
+	mdelay(2000);
+
+	rc = fg_mem_read(chip, data, fg_data[FG_DATA_BATT_ID].address,
+			fg_data[FG_DATA_BATT_ID].len, fg_data[FG_DATA_BATT_ID].offset, 0);
+	if (rc) {
+		pr_err("XJB Failed to get sram battery id data\n");
+	} else {
+		fg_data[FG_DATA_BATT_ID].value = data[0] * LSB_8B;
+	}
+	batt_id = get_sram_prop_now(chip, FG_DATA_BATT_ID);
+	pr_err("fg_hw_restart. wingtech after restart battery id = %d\n", batt_id);
+}
+
 #define FG_PROFILE_LEN			128
 #define PROFILE_COMPARE_LEN		32
 #define THERMAL_COEFF_ADDR		0x444
@@ -6320,6 +6417,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 	const char *data, *batt_type_str;
 	bool tried_again = false, vbat_in_range, profiles_same;
 	u8 reg = 0;
+	int value;
 
 wait:
 	fg_stay_awake(&chip->profile_wakeup_source);
@@ -6339,6 +6437,12 @@ wait:
 	/* Check whether the charger is ready */
 	if (!is_charger_available(chip))
 		goto reschedule;
+
+	value = get_sram_prop_now(chip, FG_DATA_BATT_ID);
+	pr_err("wingtech init FG_DATA_BATT_ID =%d\n", value);
+	if (!(((value > 57000) && (value < 78000)) || ((value > 280000) && (value < 380000)))) {
+		fg_hw_restart(chip);
+	}
 
 	/* Disable charging for a FG cycle before calculating vbat_in_range */
 	if (!chip->charging_disabled) {
@@ -6406,6 +6510,8 @@ wait:
 
 	if (rc)
 		pr_warn("couldn't find battery max voltage\n");
+	if (area_version_flag == 1)
+		chip->batt_max_voltage_uv = 4100000;
 
 	/*
 	 * Only configure from profile if fg-cc-cv-threshold-mv is not
@@ -6702,6 +6808,7 @@ static void charge_full_work(struct work_struct *work)
 	int resume_soc_raw = settings[FG_MEM_RESUME_SOC].value;
 	bool disable = false;
 	u8 reg;
+	int msoc = 0, retry = 0;
 
 	if (chip->status != POWER_SUPPLY_STATUS_FULL) {
 		if (fg_debug_mask & FG_STATUS)
@@ -6744,6 +6851,13 @@ static void charge_full_work(struct work_struct *work)
 		pr_info("wrote %06x into soc full\n", bsoc);
 	}
 	fg_mem_release(chip);
+
+	while (msoc != 0xFF && retry != 8) {
+		msleep(200);
+		msoc = get_monotonic_soc_raw(chip);
+		retry++;
+	}
+
 	/*
 	 * wait one cycle to make sure the soc is updated before clearing
 	 * the soc mask bit
@@ -7093,6 +7207,8 @@ static int fg_of_init(struct fg_chip *chip)
 			DEFAULT_EVALUATION_CURRENT_MA);
 	OF_READ_PROPERTY(chip->cc_cv_threshold_mv,
 			"fg-cc-cv-threshold-mv", rc, 0);
+	if (area_version_flag == 1)
+		chip->cc_cv_threshold_mv = 4370;
 	if (of_property_read_bool(chip->spmi->dev.of_node,
 				"qcom,capacity-learning-on"))
 		chip->batt_aging_mode = FG_AGING_CC;
@@ -8832,6 +8948,8 @@ static int fg_probe(struct spmi_device *spmi)
 			rc = -EINVAL;
 		}
 	}
+
+	get_area_version(chip);
 
 	rc = fg_detect_pmic_type(chip);
 	if (rc) {
