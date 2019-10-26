@@ -12,4 +12,6 @@ source "drivers/rosy/led/Kconfig"
 
 source "drivers/rosy/soc/Kconfig"
 
+source "drivers/rosy/pstore/Kconfig"
+
 endmenu
