@@ -8,4 +8,6 @@ source "drivers/rosy/fingerprint/Kconfig"
 
 source "drivers/rosy/touchscreen/Kconfig"
 
+source "drivers/rosy/led/Kconfig"
+
 endmenu
