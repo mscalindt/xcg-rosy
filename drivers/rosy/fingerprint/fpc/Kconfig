@@ -1,0 +1,8 @@
+config FPC1020_ROSY
+	tristate "FPC1020 fingerprint driver"
+	depends on FINGERPRINT_ROSY
+	help
+	  Say Y here to compile fingerprint drivers for FingerPrint Cards
+	  FPC1020.
+
+	  If unsure, say Y.

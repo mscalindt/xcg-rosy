@@ -1,0 +1,15 @@
+menuconfig FINGERPRINT_ROSY
+	bool "Fingerprint drivers"
+	help
+	  Say Y here, and a list of supported fingerprint drivers will be
+	  displayed. This option doesn't affect the kernel.
+
+	  If unsure, say Y.
+
+if FINGERPRINT_ROSY
+
+source "drivers/rosy/fingerprint/fpc/Kconfig"
+
+source "drivers/rosy/fingerprint/goodix/Kconfig"
+
+endif
