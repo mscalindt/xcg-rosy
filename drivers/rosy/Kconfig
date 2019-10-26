@@ -6,4 +6,6 @@ menu "Drivers for ROSY"
 
 source "drivers/rosy/fingerprint/Kconfig"
 
+source "drivers/rosy/touchscreen/Kconfig"
+
 endmenu

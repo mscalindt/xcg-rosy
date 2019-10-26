@@ -1,0 +1,7 @@
+config FT8006M_ROSY
+	tristate "FT8006M touchscreen driver"
+	depends on TOUCHSCREEN_ROSY
+	help
+	  Say Y here to compile touchscreen drivers for FocalTech FT8006M.
+
+	  If unsure, say Y.
