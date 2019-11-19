@@ -1,0 +1,16 @@
+menuconfig TOUCHSCREEN_ROSY
+	bool "Touchscreen drivers"
+	select I2C
+	help
+	  Say Y here, and a list of supported touchscreen drivers will be
+	  displayed. This option doesn't affect the kernel.
+
+	  If unsure, say Y.
+
+if TOUCHSCREEN_ROSY
+
+source "drivers/rosy/touchscreen/FT8006m/Kconfig"
+
+source "drivers/rosy/touchscreen/FT8716/Kconfig"
+
+endif
