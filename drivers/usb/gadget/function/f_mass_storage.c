@@ -2834,6 +2834,7 @@ static DEVICE_ATTR_RW(ro);
 static DEVICE_ATTR_RW(nofua);
 static DEVICE_ATTR_RW(file);
 static DEVICE_ATTR(perf, 0644, fsg_show_perf, fsg_store_perf);
+static DEVICE_ATTR(cdrom, 0644, fsg_show_cdrom_dd, fsg_store_cdrom_dd);
 
 static struct device_attribute dev_attr_ro_cdrom = __ATTR_RO(ro);
 static struct device_attribute dev_attr_file_nonremovable = __ATTR_RO(file);
@@ -2984,6 +2985,7 @@ static inline void fsg_common_remove_sysfs(struct fsg_lun *lun)
 	device_remove_file(&lun->dev, &dev_attr_ro);
 	device_remove_file(&lun->dev, &dev_attr_file);
 	device_remove_file(&lun->dev, &dev_attr_perf);
+	device_remove_file(&lun->dev, &dev_attr_cdrom);
 }
 
 void fsg_common_remove_lun(struct fsg_lun *lun, bool sysfs)
@@ -3123,6 +3125,10 @@ static inline int fsg_common_add_sysfs(struct fsg_common *common,
 		goto error;
 
 	rc = device_create_file(&lun->dev, &dev_attr_perf);
+	if (rc)
+		pr_err("failed to create sysfs entry: %d\n", rc);
+
+	rc = device_create_file(&lun->dev, &dev_attr_cdrom);
 	if (rc)
 		pr_err("failed to create sysfs entry: %d\n", rc);
 
