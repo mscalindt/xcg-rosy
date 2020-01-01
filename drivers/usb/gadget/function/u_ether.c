@@ -355,11 +355,6 @@ rx_submit(struct eth_dev *dev, struct usb_request *req, gfp_t gfp_flags)
 		size = max_t(size_t, size, dev->port_usb->fixed_out_len);
 	spin_unlock_irqrestore(&dev->lock, flags);
 
-	if (dev->rx_needed_headroom)
-		reserve_headroom = ALIGN(dev->rx_needed_headroom, 4);
-
-	pr_debug("%s: size: %zu + %d(hr)", __func__, size, reserve_headroom);
-
 	skb = alloc_skb(size + reserve_headroom, gfp_flags);
 	if (skb == NULL) {
 		DBG(dev, "no rx skb\n");
