@@ -1,10 +1,5 @@
 ```
-Changelog v3.0.0:
+Changelog v3.0.1:
 
-- Merged android-3.18 (Google's upstreamed 3.18 kernel branch).
-- Enabled SELinux audit again.
-- Misc small fixes and improvements.
-- Rosy's code is now fully based on rosy's latest kernel (riva-o-oss).
-- The kernel is now compatible with all ROMs/trees (fixed camera & flashlight).
-- Flashing Magisk to keep root after kernel zip flash is not required anymore!
+- Fixed animation lag.
 ```
