@@ -3,7 +3,7 @@
  *
  * Copyright (C) 1997-2000  Jakub Jelinek  (jakub@redhat.com)
  * Copyright (C) 1998  Eddie C. Dost  (ecd@skynet.be)
- * Copyright (C) 2001,2002  Andi Kleen, SuSE Labs 
+ * Copyright (C) 2001,2002  Andi Kleen, SuSE Labs
  * Copyright (C) 2003       Pavel Machek (pavel@ucw.cz)
  *
  * These routines maintain argument size conversion between 32bit and 64bit
@@ -259,7 +259,7 @@ static int sg_build_iovec(sg_io_hdr_t __user *sgio, void __user *dxferp, u16 iov
 {
 	sg_iovec_t __user *iov = (sg_iovec_t __user *) (sgio + 1);
 	sg_iovec32_t __user *iov32 = dxferp;
-	int i;
+	uint8_t i;
 
 	for (i = 0; i < iovec_count; i++) {
 		u32 base, len;
@@ -383,7 +383,8 @@ struct compat_sg_req_info { /* used by SG_GET_REQUEST_TABLE ioctl() */
 static int sg_grt_trans(unsigned int fd, unsigned int cmd, struct
 			compat_sg_req_info __user *o)
 {
-	int err, i;
+	int err;
+	uint8_t i;
 	sg_req_info_t __user *r;
 	r = compat_alloc_user_space(sizeof(sg_req_info_t)*SG_MAX_QUEUE);
 	err = sys_ioctl(fd,cmd,(unsigned long)r);
@@ -681,7 +682,7 @@ static int do_i2c_rdwr_ioctl(unsigned int fd, unsigned int cmd,
 	struct i2c_msg32		__user *umsgs;
 	compat_caddr_t			datap;
 	u32				nmsgs;
-	int				i;
+	uint8_t				i;
 
 	if (get_user(nmsgs, &udata->nmsgs))
 		return -EFAULT;
@@ -1521,7 +1522,7 @@ static long do_ioctl_trans(int fd, unsigned int cmd,
 
 static int compat_ioctl_check_table(unsigned int xcmd)
 {
-	int i;
+	uint8_t i;
 	const int max = ARRAY_SIZE(ioctl_pointer) - 1;
 
 	BUILD_BUG_ON(max >= (1 << 16));
