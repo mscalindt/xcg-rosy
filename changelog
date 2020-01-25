@@ -1,5 +1,9 @@
 ```
-Changelog v3.0.1:
+Changelog v3.1.0:
 
-- Fixed animation lag.
+- Compiled with GCC 9.2.0 and all code warnings fixed!
+- The upstream to 3.18.140 is now based only on linux-stable.
+- Now using "Simple LMK" instead of the defalt LMK.
+- Vibration intensity control.
+- Disabled SELinux audit again.
 ```
