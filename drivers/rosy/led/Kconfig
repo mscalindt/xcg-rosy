@@ -1,0 +1,19 @@
+menuconfig LED_ROSY
+	bool "LED drivers"
+	help
+	  Say Y here, and a list of supported LED drivers will be
+	  displayed. This option doesn't affect the kernel.
+
+	  If unsure, say Y.
+
+if LED_ROSY
+
+config AW2013_ROSY
+	tristate "AW2013 LED driver"
+	depends on LED_ROSY
+	help
+	  Say Y here to compile LED drivers for AWINIC 2013 (aw2013).
+
+	  If unsure, say Y.
+
+endif
