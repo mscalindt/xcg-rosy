@@ -1,5 +1,6 @@
 ```
-Changelog v3.1.1:
+Changelog v3.1.2:
 
-- Fixed Magisk not opening/working.
+- Removed slmk and reverted back to default lmk.
+- Wireguard support.
 ```
