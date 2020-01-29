@@ -16,4 +16,12 @@ source "drivers/rosy/pstore/Kconfig"
 
 source "drivers/rosy/sound/Kconfig"
 
+config ARM_DT_OVERLAY_ROSY
+	bool "ROSY DT overlay"
+	select CONFIG_ARCH_SDM450
+	help
+	  Say Y here to enable ROSY DT overlay.
+
+	  If unsure, say Y.
+
 endmenu
