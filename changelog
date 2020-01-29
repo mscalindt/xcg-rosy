@@ -1,6 +1,5 @@
 ```
-Changelog v3.1.2:
+Changelog v3.1.3:
 
-- Removed slmk and reverted back to default lmk.
-- Wireguard support.
+- Fixed low sound.
 ```
