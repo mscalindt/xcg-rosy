@@ -368,7 +368,7 @@ static int aw87319_i2c_probe(struct i2c_client *client,
 	if (!cnt) {
 		err = -ENODEV;
 		aw87319_hw_off();
-		strncpy(Spk_Pa_Flag, "S88537A12", 9);
+		strlcpy(Spk_Pa_Flag, "S88537A12", 9);
 		Spk_Pa_Flag[9] = '\0';
 		pr_err("%s:can not find AW87319, board  is S88537A12\n!",
 			__func__);
