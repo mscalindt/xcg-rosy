@@ -1,5 +1,11 @@
 ```
-Changelog v3.2.0:
+Changelog v3.3.0:
 
-- Merged CAF tag LA.UM.8.6.r1-03400-89xx.0
+- Upstreamed prima drivers.
+- Miscellaneous DTS changes.
+- Miscellaneous touchscreen changes.
+- Disabled host ARP offloading in prima.
+- Enabled KSM (kernel samepage merging).
+- Enabled "front swap".
+- Enabled "ZSWAP".
 ```
