@@ -1,11 +1,7 @@
 ```
-Changelog v3.3.0:
+Changelog v3.3.1:
 
-- Upstreamed prima drivers.
-- Miscellaneous DTS changes.
-- Miscellaneous touchscreen changes.
-- Disabled host ARP offloading in prima.
-- Enabled KSM (kernel samepage merging).
-- Enabled "front swap".
-- Enabled "ZSWAP".
+- Reduced debugging in prima.
+- Disabled ZSWAP.
+- Disabled ZCACHE.
 ```
