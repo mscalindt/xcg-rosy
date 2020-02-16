@@ -63,6 +63,10 @@
 #include <asm/efi.h>
 #include <asm/system_misc.h>
 
+#ifdef CONFIG_PSTORE_RAM
+extern void pstore_ram_reserve_memory(void);
+#endif
+
 unsigned int boot_reason;
 EXPORT_SYMBOL(boot_reason);
 
@@ -363,6 +367,10 @@ void __init setup_arch(char **cmdline_p)
 	 * thread.
 	 */
 	init_thread_info.ttbr0 = virt_to_phys(empty_zero_page);
+#endif
+
+#ifdef CONFIG_PSTORE_RAM
+	pstore_ram_reserve_memory();
 #endif
 
 #ifdef CONFIG_VT
