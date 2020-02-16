@@ -14,4 +14,6 @@ source "drivers/rosy/soc/Kconfig"
 
 source "drivers/rosy/pstore/Kconfig"
 
+source "drivers/rosy/sound/Kconfig"
+
 endmenu
