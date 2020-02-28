@@ -1,15 +1,5 @@
 ```
-Changelog v3.4.0:
+Changelog v3.4.1:
 
-- Wireguard version 0.0.20200215
-- Enabled CPUSETS.
-- Enabled boosting for CFS tasks.
-- Enabled power-efficient workqueue mode.
-- Disabled many configs unrelated to rosy.
-- Disabled some debug & profiling configs.
-- Removed useless dtbs that get appended to the dtb kernel img.
-- Removed "adaptive LMK" feature, it is awfully misconfiguring OOM parameters.
-- Increased dmesg log size to 256 KB.
-- Support for CPU boosting on migration of important threads (known as CPU boost).
-- Miscellaneous small config optimizations.
+- Fixed SD card issue.
 ```
