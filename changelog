@@ -1,11 +1,6 @@
 ```
-Changelog v3.5.0:
+Changelog v3.6.0:
 
-- CAF tag LA.UM.8.6.r1-04000-89xx.0
-- Removed more hard-coded debugging in rosy's touchscreen drivers.
-- Removed PPR (per process reclaim), another broken meme from Qualcomm.
-- Removed even more debugging in the kernel.
-- Disabled KSM (kernel samepage merging).
-- Switched back to the usual type of workqueues (bound).
-- Miscellaneous fixes and improvements.
+- Optimized memory consumption.
+- Miscellaneous small config changes.
 ```
