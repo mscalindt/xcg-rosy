@@ -1,6 +1,12 @@
 ```
-Changelog v3.6.0:
+Changelog v3.7.0:
 
-- Optimized memory consumption.
-- Miscellaneous small config changes.
+- Wireguard version 0.0.20200318
+- Reimported Xiaomi's sound changes to potentially fix any odd sound problems.
+- Fixed Xiaomi's broken (on source level) Goodix netlink driver.
+- Fixed duplicate flashlight driver probing.
+- Disabled CAF's "power aware driver".
+- Unlocked CPU min/max freq.
+- Now using "O3" level of GCC optimization.
+- Miscellaneous fixes.
 ```
