@@ -947,7 +947,7 @@ static int __init apr_init(void)
 	apr_pkt_ctx = ipc_log_context_create(APR_PKT_IPC_LOG_PAGE_CNT,
 						"apr", 0);
 	if (!apr_pkt_ctx)
-		pr_err("%s: Unable to create ipc log context\n", __func__);
+		pr_debug("%s: Unable to create ipc log context\n", __func__);
 
 	return 0;
 }
