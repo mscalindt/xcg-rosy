@@ -171,28 +171,6 @@ static int omap_1510_local_bus_init(void)
 #define omap_1510_local_bus_init()	{}
 #endif
 
-#ifdef	CONFIG_USB_OTG
-
-static void start_hnp(struct ohci_hcd *ohci)
-{
-	struct usb_hcd *hcd = ohci_to_hcd(ohci);
-	const unsigned	port = hcd->self.otg_port - 1;
-	unsigned long	flags;
-	u32 l;
-
-	otg_start_hnp(hcd->usb_phy->otg);
-
-	local_irq_save(flags);
-	hcd->usb_phy->state = OTG_STATE_A_SUSPEND;
-	writel (RH_PS_PSS, &ohci->regs->roothub.portstatus [port]);
-	l = omap_readl(OTG_CTRL);
-	l &= ~OTG_A_BUSREQ;
-	omap_writel(l, OTG_CTRL);
-	local_irq_restore(flags);
-}
-
-#endif
-
 /*-------------------------------------------------------------------------*/
 
 static int ohci_omap_reset(struct usb_hcd *hcd)
@@ -217,26 +195,6 @@ static int ohci_omap_reset(struct usb_hcd *hcd)
 	/* XXX OMAP16xx only */
 	if (config->ocpi_enable)
 		config->ocpi_enable();
-
-#ifdef	CONFIG_USB_OTG
-	if (need_transceiver) {
-		hcd->usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
-		if (!IS_ERR_OR_NULL(hcd->usb_phy)) {
-			int	status = otg_set_host(hcd->usb_phy->otg,
-						&ohci_to_hcd(ohci)->self);
-			dev_dbg(hcd->self.controller, "init %s phy, status %d\n",
-					hcd->usb_phy->label, status);
-			if (status) {
-				usb_put_phy(hcd->usb_phy);
-				return status;
-			}
-		} else {
-			dev_err(hcd->self.controller, "can't find phy\n");
-			return -ENODEV;
-		}
-		ohci->start_hnp = start_hnp;
-	}
-#endif
 
 	omap_ohci_clock_power(1);
 

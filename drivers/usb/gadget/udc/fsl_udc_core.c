@@ -2349,17 +2349,6 @@ static int fsl_udc_probe(struct platform_device *pdev)
 	spin_lock_init(&udc_controller->lock);
 	udc_controller->stopped = 1;
 
-#ifdef CONFIG_USB_OTG
-	if (pdata->operating_mode == FSL_USB2_DR_OTG) {
-		udc_controller->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
-		if (IS_ERR_OR_NULL(udc_controller->transceiver)) {
-			ERR("Can't find OTG driver!\n");
-			ret = -ENODEV;
-			goto err_kfree;
-		}
-	}
-#endif
-
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
 		ret = -ENXIO;
