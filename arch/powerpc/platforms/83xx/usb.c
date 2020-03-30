@@ -109,9 +109,6 @@ int mpc831x_usb_cfg(void)
 	const void *prop;
 	struct resource res;
 	int ret = 0;
-#ifdef CONFIG_USB_OTG
-	const void *dr_mode;
-#endif
 
 	np = of_find_compatible_node(NULL, NULL, "fsl-usb2-dr");
 	if (!np)
@@ -192,14 +189,6 @@ int mpc831x_usb_cfg(void)
 	} else if (prop && !strcmp(prop, "ulpi")) {
 		/* Set PHY_CLK_SEL to ULPI */
 		temp = CONTROL_PHY_CLK_SEL_ULPI;
-#ifdef CONFIG_USB_OTG
-		/* Set OTG_PORT */
-		if (!of_device_is_compatible(immr_node, "fsl,mpc8308-immr")) {
-			dr_mode = of_get_property(np, "dr_mode", NULL);
-			if (dr_mode && !strcmp(dr_mode, "otg"))
-				temp |= CONTROL_OTG_PORT;
-		}
-#endif /* CONFIG_USB_OTG */
 		out_be32(usb_regs + FSL_USB2_CONTROL_OFFS, temp);
 	} else {
 		printk(KERN_WARNING "831x USB PHY type not supported\n");

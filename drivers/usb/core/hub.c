@@ -2253,61 +2253,6 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 {
 	int err = 0;
 
-#ifdef	CONFIG_USB_OTG
-	/*
-	 * OTG-aware devices on OTG-capable root hubs may be able to use SRP,
-	 * to wake us after we've powered off VBUS; and HNP, switching roles
-	 * "host" to "peripheral".  The OTG descriptor helps figure this out.
-	 */
-	if (!udev->bus->is_b_host
-			&& udev->config
-			&& udev->parent == udev->bus->root_hub) {
-		struct usb_otg_descriptor	*desc = NULL;
-		struct usb_bus			*bus = udev->bus;
-		unsigned			port1 = udev->portnum;
-
-		/* descriptor may appear anywhere in config */
-		err = __usb_get_extra_descriptor(udev->rawdescriptors[0],
-				le16_to_cpu(udev->config[0].desc.wTotalLength),
-				USB_DT_OTG, (void **) &desc, sizeof(*desc));
-		if (err || !(desc->bmAttributes & USB_OTG_HNP))
-			return 0;
-		dev_info(&udev->dev, "Dual-Role OTG device on %sHNP port\n",
-					(port1 == bus->otg_port) ? "" : "non-");
-
-		/* enable HNP before suspend, it's simpler */
-		if (port1 == bus->otg_port) {
-			bus->b_hnp_enable = 1;
-			err = usb_control_msg(udev,
-				usb_sndctrlpipe(udev, 0),
-				USB_REQ_SET_FEATURE, 0,
-				USB_DEVICE_B_HNP_ENABLE,
-				0, NULL, 0,
-				USB_CTRL_SET_TIMEOUT);
-			if (err < 0) {
-				/*
-				 * OTG MESSAGE: report errors here,
-				 * customize to match your product.
-				 */
-				dev_err(&udev->dev, "can't set HNP mode: %d\n",
-									err);
-				bus->b_hnp_enable = 0;
-			}
-		} else if (desc->bLength == sizeof
-				(struct usb_otg_descriptor)) {
-			/* Set a_alt_hnp_support for legacy otg device */
-			err = usb_control_msg(udev,
-				usb_sndctrlpipe(udev, 0),
-				USB_REQ_SET_FEATURE, 0,
-				USB_DEVICE_A_ALT_HNP_SUPPORT,
-				0, NULL, 0,
-				USB_CTRL_SET_TIMEOUT);
-			if (err < 0)
-				dev_err(&udev->dev,
-					"set a_alt_hnp_support failed: %d\n",
-					err);
-		}
-#endif
 	return err;
 }
 
@@ -2353,15 +2298,6 @@ static int usb_enumerate_device(struct usb_device *udev)
 
 	if (IS_ENABLED(CONFIG_USB_OTG_WHITELIST) && hcd->tpl_support &&
 		!is_targeted(udev)) {
-		/* Maybe it can talk to us, though we can't talk to it.
-		 * (Includes HNP test device.)
-		 */
-		if (IS_ENABLED(CONFIG_USB_OTG) && (udev->bus->b_hnp_enable
-			|| udev->bus->is_b_host)) {
-			err = usb_port_suspend(udev, PMSG_AUTO_SUSPEND);
-			if (err < 0)
-				dev_dbg(&udev->dev, "HNP fail, %d\n", err);
-		}
 		return -ENOTSUPP;
 	}
 
@@ -4864,13 +4800,6 @@ static void hub_port_connect_change(struct usb_hub *hub, int port1,
 		set_port_led(hub, port1, HUB_LED_AUTO);
 		hub->indicator[port1-1] = INDICATOR_AUTO;
 	}
-
-#ifdef	CONFIG_USB_OTG
-	/* during HNP, don't repeat the debounce */
-	if (hub->hdev->bus->is_b_host)
-		portchange &= ~(USB_PORT_STAT_C_CONNECTION |
-				USB_PORT_STAT_C_ENABLE);
-#endif
 
 	/* Try to resuscitate an existing device */
 	if ((portstatus & USB_PORT_STAT_CONNECTION) && udev &&
