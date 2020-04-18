@@ -960,10 +960,6 @@ static void init_dummy_udc_hw(struct dummy *dum)
 	dum->gadget.ep0 = &dum->ep[0].ep;
 	list_del_init(&dum->ep[0].ep.ep_list);
 	INIT_LIST_HEAD(&dum->fifo_req.queue);
-
-#ifdef CONFIG_USB_OTG
-	dum->gadget.is_otg = 1;
-#endif
 }
 
 static int dummy_udc_probe(struct platform_device *pdev)
@@ -2323,9 +2319,6 @@ static int dummy_start_ss(struct dummy_hcd *dum_hcd)
 	dummy_hcd_to_hcd(dum_hcd)->power_budget = POWER_BUDGET;
 	dummy_hcd_to_hcd(dum_hcd)->state = HC_STATE_RUNNING;
 	dummy_hcd_to_hcd(dum_hcd)->uses_new_polling = 1;
-#ifdef CONFIG_USB_OTG
-	dummy_hcd_to_hcd(dum_hcd)->self.otg_port = 1;
-#endif
 	return 0;
 
 	/* FIXME 'urbs' should be a per-device thing, maybe in usbcore */
@@ -2355,10 +2348,6 @@ static int dummy_start(struct usb_hcd *hcd)
 	hcd->power_budget = POWER_BUDGET;
 	hcd->state = HC_STATE_RUNNING;
 	hcd->uses_new_polling = 1;
-
-#ifdef CONFIG_USB_OTG
-	hcd->self.otg_port = 1;
-#endif
 
 	/* FIXME 'urbs' should be a per-device thing, maybe in usbcore */
 	return device_create_file(dummy_dev(dum_hcd), &dev_attr_urbs);
