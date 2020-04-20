@@ -1,11 +1,11 @@
 {
   "kernel": {
     "name": "xCG",
-    "version": "3.7.0",
-    "link": "https://github.com/mscalindt/xcg-rosy/releases/download/v3.7.0/xCG-3.7.0-ROSY-Q-20200330.zip",
+    "version": "4.0.0",
+    "link": "https://github.com/mscalindt/xcg-rosy/releases/download/v4.0.0/xCG-4.0.0-ROSY-Q-20200420.zip",
     "changelog_url": "https://raw.githubusercontent.com/mscalindt/xcg-rosy/fkm-updater/changelog",
-    "date": "2020-03-30",
-    "sha1": "3f7198a0fee3e8f0c8b937fa7a77e64b010ec487"
+    "date": "2020-04-20",
+    "sha1": "38db2094b552b34efb3b154a9471999e432a2c94"
   },
   "support": {
     "link": "https://t.me/xcgkernel"
