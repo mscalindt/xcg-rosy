@@ -2303,47 +2303,6 @@ EXPORT_SYMBOL_GPL(usb_hcd_resume_root_hub);
 
 /*-------------------------------------------------------------------------*/
 
-#ifdef	CONFIG_USB_OTG
-
-/**
- * usb_bus_start_enum - start immediate enumeration (for OTG)
- * @bus: the bus (must use hcd framework)
- * @port_num: 1-based number of port; usually bus->otg_port
- * Context: in_interrupt()
- *
- * Starts enumeration, with an immediate reset followed later by
- * hub_wq identifying and possibly configuring the device.
- * This is needed by OTG controller drivers, where it helps meet
- * HNP protocol timing requirements for starting a port reset.
- *
- * Return: 0 if successful.
- */
-int usb_bus_start_enum(struct usb_bus *bus, unsigned port_num)
-{
-	struct usb_hcd		*hcd;
-	int			status = -EOPNOTSUPP;
-
-	/* NOTE: since HNP can't start by grabbing the bus's address0_sem,
-	 * boards with root hubs hooked up to internal devices (instead of
-	 * just the OTG port) may need more attention to resetting...
-	 */
-	hcd = container_of (bus, struct usb_hcd, self);
-	if (port_num && hcd->driver->start_port_reset)
-		status = hcd->driver->start_port_reset(hcd, port_num);
-
-	/* allocate hub_wq shortly after (first) root port reset finishes;
-	 * it may issue others, until at least 50 msecs have passed.
-	 */
-	if (status == 0)
-		mod_timer(&hcd->rh_timer, jiffies + msecs_to_jiffies(10));
-	return status;
-}
-EXPORT_SYMBOL_GPL(usb_bus_start_enum);
-
-#endif
-
-/*-------------------------------------------------------------------------*/
-
 /**
  * usb_hcd_irq - hook IRQs to HCD framework (bus glue)
  * @irq: the IRQ being raised

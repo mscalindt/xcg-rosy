@@ -936,13 +936,6 @@ int ehci_hub_control(
 				goto error;
 			if (ehci->no_selective_suspend)
 				break;
-#ifdef CONFIG_USB_OTG
-			if ((hcd->self.otg_port == (wIndex + 1))
-			    && hcd->self.b_hnp_enable) {
-				otg_start_hnp(hcd->usb_phy->otg);
-				break;
-			}
-#endif
 			if (!(temp & PORT_SUSPEND))
 				break;
 			if ((temp & PORT_PE) == 0)

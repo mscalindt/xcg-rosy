@@ -567,34 +567,7 @@ ohci_hub_descriptor (
 		desc->u.hs.DeviceRemovable[1] = 0xff;
 }
 
-/*-------------------------------------------------------------------------*/
-
-#ifdef	CONFIG_USB_OTG
-
-static int ohci_start_port_reset (struct usb_hcd *hcd, unsigned port)
-{
-	struct ohci_hcd	*ohci = hcd_to_ohci (hcd);
-	u32			status;
-
-	if (!port)
-		return -EINVAL;
-	port--;
-
-	/* start port reset before HNP protocol times out */
-	status = ohci_readl(ohci, &ohci->regs->roothub.portstatus [port]);
-	if (!(status & RH_PS_CCS))
-		return -ENODEV;
-
-	/* hub_wq will finish the reset later */
-	ohci_writel(ohci, RH_PS_PRS, &ohci->regs->roothub.portstatus [port]);
-	return 0;
-}
-
-#else
-
 #define	ohci_start_port_reset		NULL
-
-#endif
 
 /*-------------------------------------------------------------------------*/
 
@@ -765,12 +738,6 @@ int ohci_hub_control(
 		wIndex--;
 		switch (wValue) {
 		case USB_PORT_FEAT_SUSPEND:
-#ifdef	CONFIG_USB_OTG
-			if (hcd->self.otg_port == (wIndex + 1)
-					&& hcd->self.b_hnp_enable)
-				ohci->start_hnp(ohci);
-			else
-#endif
 			ohci_writel (ohci, RH_PS_PSS,
 				&ohci->regs->roothub.portstatus [wIndex]);
 			break;
