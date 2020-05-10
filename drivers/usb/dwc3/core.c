@@ -975,7 +975,7 @@ static int dwc3_probe(struct platform_device *pdev)
 
 	ret = dwc3_debugfs_init(dwc);
 	if (ret) {
-		dev_err(dev, "failed to initialize debugfs\n");
+		dev_dbg(dev, "failed to initialize debugfs\n");
 		goto err_usb3phy_power;
 	}
 

@@ -4003,7 +4003,7 @@ int glink_core_register_transport(struct glink_transport_if *if_ptr,
 			xprt_ptr->edge, xprt_ptr->name);
 	xprt_ptr->log_ctx = ipc_log_context_create(NUM_LOG_PAGES, log_name, 0);
 	if (!xprt_ptr->log_ctx)
-		GLINK_ERR("%s: unable to create log context for [%s:%s]\n",
+		GLINK_DBG("%s: unable to create log context for [%s:%s]\n",
 				__func__, xprt_ptr->edge, xprt_ptr->name);
 
 	return 0;
@@ -6181,7 +6181,7 @@ static int glink_init(void)
 {
 	log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "glink", 0);
 	if (!log_ctx)
-		GLINK_ERR("%s: unable to create log context\n", __func__);
+		GLINK_DBG("%s: unable to create log context\n", __func__);
 	glink_debugfs_init();
 
 	return 0;
