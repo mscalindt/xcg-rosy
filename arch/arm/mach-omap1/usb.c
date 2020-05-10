@@ -83,10 +83,6 @@ omap_otg_init(struct omap_usb_config *config)
 
 	syscon = config->hmc_mode;
 	syscon |= USBX_SYNCHRO | (4 << 16) /* B_ASE0_BRST */;
-#ifdef	CONFIG_USB_OTG
-	if (config->otg)
-		syscon |= OTG_EN;
-#endif
 	if (cpu_class_is_omap1())
 		pr_debug("USB_TRANSCEIVER_CTRL = %03x\n",
 			 omap_readl(USB_TRANSCEIVER_CTRL));
@@ -149,18 +145,6 @@ omap_otg_init(struct omap_usb_config *config)
 	}
 #endif
 
-#ifdef	CONFIG_USB_OTG
-	if (config->otg) {
-		struct platform_device *otg_device = config->otg_device;
-		int status;
-
-		syscon &= ~OTG_IDLE_EN;
-		otg_device->dev.platform_data = config;
-		status = platform_device_register(otg_device);
-		if (status)
-			pr_debug("can't register OTG device, %d\n", status);
-	}
-#endif
 	pr_debug("OTG_SYSCON_1 = %08x\n", omap_readl(OTG_SYSCON_1));
 	omap_writel(syscon, OTG_SYSCON_1);
 }
@@ -265,41 +249,9 @@ static inline void ohci_device_init(struct omap_usb_config *pdata)
 
 #endif
 
-#if	defined(CONFIG_USB_OTG) && defined(CONFIG_ARCH_OMAP_OTG)
-
-static struct resource otg_resources[] = {
-	/* order is significant! */
-	{
-		.start		= OTG_BASE,
-		.end		= OTG_BASE + 0xff,
-		.flags		= IORESOURCE_MEM,
-	}, {
-		.start		= INT_USB_IRQ_OTG,
-		.flags		= IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device otg_device = {
-	.name		= "omap_otg",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(otg_resources),
-	.resource	= otg_resources,
-};
-
-static inline void otg_device_init(struct omap_usb_config *pdata)
-{
-	if (cpu_is_omap7xx())
-		otg_resources[1].start = INT_7XX_USB_OTG;
-	pdata->otg_device = &otg_device;
-}
-
-#else
-
 static inline void otg_device_init(struct omap_usb_config *pdata)
 {
 }
-
-#endif
 
 static u32 __init omap1_usb0_init(unsigned nwires, unsigned is_device)
 {

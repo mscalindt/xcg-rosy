@@ -79,15 +79,9 @@ static struct usb_zero_options gzero_options = {
  * DO NOT REUSE THESE IDs with a protocol-incompatible driver!!  Ever!!
  * Instead:  allocate your own, using normal USB-IF procedures.
  */
-#ifndef	CONFIG_USB_ZERO_HNPTEST
 #define DRIVER_VENDOR_NUM	0x0525		/* NetChip */
 #define DRIVER_PRODUCT_NUM	0xa4a0		/* Linux-USB "Gadget Zero" */
 #define DEFAULT_AUTORESUME	0
-#else
-#define DRIVER_VENDOR_NUM	0x1a0a		/* OTG test device IDs */
-#define DRIVER_PRODUCT_NUM	0xbadd
-#define DEFAULT_AUTORESUME	5
-#endif
 
 /* If the optional "autoresume" mode is enabled, it provides good
  * functional coverage for the "USBCV" test harness from USB-IF.
@@ -123,24 +117,7 @@ static struct usb_device_descriptor device_desc = {
 	.bNumConfigurations =	2,
 };
 
-#ifdef CONFIG_USB_OTG
-static struct usb_otg_descriptor otg_descriptor = {
-	.bLength =		sizeof otg_descriptor,
-	.bDescriptorType =	USB_DT_OTG,
-
-	/* REVISIT SRP-only hardware is possible, although
-	 * it would not be called "OTG" ...
-	 */
-	.bmAttributes =		USB_OTG_SRP | USB_OTG_HNP,
-};
-
-static const struct usb_descriptor_header *otg_desc[] = {
-	(struct usb_descriptor_header *) &otg_descriptor,
-	NULL,
-};
-#else
 #define otg_desc	NULL
-#endif
 
 /* string IDs are assigned dynamically */
 /* default serial number takes at least two packets */

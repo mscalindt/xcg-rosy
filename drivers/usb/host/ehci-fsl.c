@@ -132,28 +132,6 @@ static int usb_hcd_fsl_probe(const struct hc_driver *driver,
 		goto err2;
 	device_wakeup_enable(hcd->self.controller);
 
-#ifdef CONFIG_USB_OTG
-	if (pdata->operating_mode == FSL_USB2_DR_OTG) {
-		struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-
-		hcd->usb_phy = usb_get_phy(USB_PHY_TYPE_USB2);
-		dev_dbg(&pdev->dev, "hcd=0x%p  ehci=0x%p, phy=0x%p\n",
-			hcd, ehci, hcd->usb_phy);
-
-		if (!IS_ERR_OR_NULL(hcd->usb_phy)) {
-			retval = otg_set_host(hcd->usb_phy->otg,
-					      &ehci_to_hcd(ehci)->self);
-			if (retval) {
-				usb_put_phy(hcd->usb_phy);
-				goto err2;
-			}
-		} else {
-			dev_err(&pdev->dev, "can't find phy\n");
-			retval = -ENODEV;
-			goto err2;
-		}
-	}
-#endif
 	return retval;
 
       err2:
@@ -611,37 +589,7 @@ static struct dev_pm_ops ehci_fsl_pm_ops = {
 #define EHCI_FSL_PM_OPS		NULL
 #endif /* CONFIG_PM */
 
-#ifdef CONFIG_USB_OTG
-static int ehci_start_port_reset(struct usb_hcd *hcd, unsigned port)
-{
-	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-	u32 status;
-
-	if (!port)
-		return -EINVAL;
-
-	port--;
-
-	/* start port reset before HNP protocol time out */
-	status = readl(&ehci->regs->port_status[port]);
-	if (!(status & PORT_CONNECT))
-		return -ENODEV;
-
-	/* hub_wq will finish the reset later */
-	if (ehci_is_TDI(ehci)) {
-		writel(PORT_RESET |
-		       (status & ~(PORT_CSC | PORT_PEC | PORT_OCC)),
-		       &ehci->regs->port_status[port]);
-	} else {
-		writel(PORT_RESET, &ehci->regs->port_status[port]);
-	}
-
-	return 0;
-}
-#else
 #define ehci_start_port_reset	NULL
-#endif /* CONFIG_USB_OTG */
-
 
 static const struct hc_driver ehci_fsl_hc_driver = {
 	.description = hcd_name,
