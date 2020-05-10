@@ -1,9 +1,6 @@
 ```
-Changelog v4.1.0:
+Changelog v4.1.1:
 
-- CAF tag LA.UM.8.6.r1-04300-89xx.0 for prima.
-- Wireguard version 1.0.20200429
-- Ported msm8x16-wcd codec to extcon class.
-- Disabled memory controller.
-- Improved overall smoothness.
+- Wireguard version 1.0.20200506
+- Deep sleep fix.
 ```
