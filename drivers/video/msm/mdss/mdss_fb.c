@@ -4277,11 +4277,6 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 		return ret;
 	}
 
-	i = mdss_fb_wait_for_fence(sync_pt_data);
-	if (i > 0)
-		pr_warn("%s: waited on %d active fences\n",
-				sync_pt_data->fence_name, i);
-
 	mutex_lock(&sync_pt_data->sync_mutex);
 	for (i = 0; i < buf_sync->acq_fen_fd_cnt; i++) {
 		fence = sync_fence_fdget(acq_fen_fd[i]);
@@ -4297,6 +4292,11 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 	sync_pt_data->acq_fen_cnt = i;
 	if (ret)
 		goto buf_sync_err_1;
+
+	i = mdss_fb_wait_for_fence(sync_pt_data);
+	if (i > 0)
+		pr_warn("%s: waited on %d active fences\n",
+				sync_pt_data->fence_name, i);
 
 	val = sync_pt_data->timeline_value + sync_pt_data->threshold +
 			atomic_read(&sync_pt_data->commit_cnt);
