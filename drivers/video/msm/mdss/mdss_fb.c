@@ -4287,6 +4287,10 @@ static int mdss_fb_handle_buf_sync_ioctl(struct msm_sync_pt_data *sync_pt_data,
 			ret = -EINVAL;
 			break;
 		}
+		if (sync_fence_signaled(fence)) {
+			ret = -EINVAL;
+			break;
+		}
 		sync_pt_data->acq_fen[i] = fence;
 	}
 	sync_pt_data->acq_fen_cnt = i;
