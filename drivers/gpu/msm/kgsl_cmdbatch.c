@@ -365,6 +365,11 @@ static int kgsl_cmdbatch_add_sync_fence(struct kgsl_device *device,
 	if (fence == NULL)
 		return -EINVAL;
 
+	if (sync_fence_signaled(fence)) {
+		sync_fence_put(fence);
+		return ret;
+	}
+
 	kref_get(&cmdbatch->refcount);
 
 	id = cmdbatch->numsyncs++;
