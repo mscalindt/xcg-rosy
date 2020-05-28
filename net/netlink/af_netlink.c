@@ -2000,7 +2000,7 @@ static int netlink_dump(struct sock *sk)
 		skb = netlink_alloc_skb(sk,
 					nlk->max_recvmsg_len,
 					nlk->portid,
-					(GFP_KERNEL & ~__GFP_WAIT) |
+					(GFP_KERNEL & ~__GFP_DIRECT_RECLAIM) |
 					__GFP_NOWARN | __GFP_NORETRY);
 		/* available room should be exact amount to avoid MSG_TRUNC */
 		if (skb)
@@ -2009,7 +2009,7 @@ static int netlink_dump(struct sock *sk)
 	}
 	if (!skb)
 		skb = netlink_alloc_skb(sk, alloc_size, nlk->portid,
-					(GFP_KERNEL & ~__GFP_WAIT));
+					(GFP_KERNEL & ~__GFP_DIRECT_RECLAIM));
 	if (!skb)
 		goto errout_skb;
 	netlink_skb_set_owner_r(skb, sk);

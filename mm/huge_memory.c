@@ -763,7 +763,7 @@ static int __do_huge_pmd_anonymous_page(struct mm_struct *mm,
 
 static inline gfp_t alloc_hugepage_gfpmask(int defrag, gfp_t extra_gfp)
 {
-	return (GFP_TRANSHUGE & ~(defrag ? 0 : __GFP_WAIT)) | extra_gfp;
+	return (GFP_TRANSHUGE & ~(defrag ? 0 : __GFP_DIRECT_RECLAIM)) | extra_gfp;
 }
 
 static inline struct page *alloc_hugepage_vma(int defrag,
