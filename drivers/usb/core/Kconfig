@@ -41,20 +41,6 @@ config USB_DYNAMIC_MINORS
 
 	  If you are unsure about this, say N here.
 
-config USB_OTG
-	bool "OTG support"
-	depends on PM_RUNTIME
-	default n
-	help
-	  The most notable feature of USB OTG is support for a
-	  "Dual-Role" device, which can act as either a device
-	  or a host. The initial role is decided by the type of
-	  plug inserted and can be changed later when two dual
-	  role devices talk to each other.
-
-	  Select this only if your board has Mini-AB/Micro-AB
-	  connector.
-
 config USB_OTG_WHITELIST
 	bool "Rely on OTG and EH Targeted Peripherals List"
 	depends on USB
@@ -68,19 +54,9 @@ config USB_OTG_WHITELIST
 
 config USB_OTG_BLACKLIST_HUB
 	bool "Disable external hubs"
-	depends on USB_OTG || EXPERT
+	depends on EXPERT
 	help
 	  If you say Y here, then Linux will refuse to enumerate
 	  external hubs.  OTG hosts are allowed to reduce hardware
 	  and software costs by not supporting external hubs.  So
 	  are "Embedded Hosts" that don't offer OTG support.
-
-config USB_OTG_FSM
-	tristate "USB 2.0 OTG FSM implementation"
-	depends on USB
-	select USB_OTG
-	select USB_PHY
-	help
-	  Implements OTG Finite State Machine as specified in On-The-Go
-	  and Embedded Host Supplement to the USB Revision 2.0 Specification.
-

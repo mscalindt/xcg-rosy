@@ -605,7 +605,7 @@ static int tps65010_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, tps);
 	the_tps = tps;
 
-#if	defined(CONFIG_USB_GADGET) && !defined(CONFIG_USB_OTG)
+#ifdef CONFIG_USB_GADGET
 	/* USB hosts can't draw VBUS.  OTG devices could, later
 	 * when OTG infrastructure enables it.  USB peripherals
 	 * could be relying on VBUS while booting, though.

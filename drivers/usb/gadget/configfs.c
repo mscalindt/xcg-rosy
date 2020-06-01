@@ -80,9 +80,6 @@ struct gadget_info {
 	struct list_head available_func;
 
 	const char *udc_name;
-#ifdef CONFIG_USB_OTG
-	struct usb_otg_descriptor otg;
-#endif
 	struct usb_composite_driver composite;
 	struct usb_composite_dev cdev;
 	bool use_os_desc;
@@ -1723,12 +1720,6 @@ static struct config_group *gadgets_make(
 
 	if (!gi->composite.gadget_driver.function)
 		goto err1;
-
-#ifdef CONFIG_USB_OTG
-	gi->otg.bLength = sizeof(struct usb_otg_descriptor);
-	gi->otg.bDescriptorType = USB_DT_OTG;
-	gi->otg.bmAttributes = USB_OTG_SRP | USB_OTG_HNP;
-#endif
 
 	config_group_init_type_name(&gi->group, name,
 				&gadget_root_type);

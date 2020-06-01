@@ -10,7 +10,9 @@ obj-y				+= clock-pm.o
 
 obj-$(CONFIG_MSM_CLK_CONTROLLER_V2)	+= msm-clock-controller.o
 
+ifeq ($(CONFIG_DEBUG_FS), y)
 obj-$(CONFIG_DEBUG_FS)		+= clock-debug.o
+endif
 
 # MSM 8996
 obj-$(CONFIG_ARCH_MSM8996)	+= clock-gcc-8996.o
