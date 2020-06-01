@@ -1,0 +1,27 @@
+#
+# ROSY drivers configuration
+#
+
+menu "Drivers for ROSY"
+
+source "drivers/rosy/fingerprint/Kconfig"
+
+source "drivers/rosy/touchscreen/Kconfig"
+
+source "drivers/rosy/led/Kconfig"
+
+source "drivers/rosy/soc/Kconfig"
+
+source "drivers/rosy/pstore/Kconfig"
+
+source "drivers/rosy/sound/Kconfig"
+
+config ARM_DT_OVERLAY_ROSY
+	bool "ROSY DT overlay"
+	select CONFIG_ARCH_SDM450
+	help
+	  Say Y here to enable ROSY DT overlay.
+
+	  If unsure, say Y.
+
+endmenu
