@@ -131,3 +131,13 @@ config SECURITY_SELINUX_POLICYDB_VERSION_MAX_VALUE
 	  installed under /etc/selinux/$SELINUXTYPE/policy, where
 	  SELINUXTYPE is defined in your /etc/selinux/config.
 
+config SECURITY_SELINUX_NO_LOGGING
+	bool "Silence SELinux denials"
+	default n
+	depends on SECURITY_SELINUX
+	help
+	  This options stops SELinux from spamming dmesg with denial
+	  messages.
+
+	  If you are unsure how to answer this question, answer N.
+
