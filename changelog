@@ -1,6 +1,16 @@
 ```
-Changelog v4.1.1:
+Changelog v4.2.0:
 
-- Wireguard version 1.0.20200506
-- Deep sleep fix.
+- Wireguard version 1.0.20200520
+- Imported missing power-related code from riva-o-oss.
+- Upstreamed and optimized ashmem.
+- Disabled ESD check on ebbg panel (already disabled on touchscreen & other panels).
+- Disabled power to panel during idle screen.
+- Improved kernel's general reliability.
+- Reduced debugging in kernel & prima.
+- Reduced cases of frame dropping.
+- DDR boost when a new frame is ready to be rendered (optimized DDR usage).
+- Support for magic sysrq.
+- Various memory-related improvements & mm fixes.
+- Many small miscellaneous improvements and fixes.
 ```
