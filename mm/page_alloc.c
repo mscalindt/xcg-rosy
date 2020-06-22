@@ -149,12 +149,12 @@ void pm_restrict_gfp_mask(void)
 	WARN_ON(!mutex_is_locked(&pm_mutex));
 	WARN_ON(saved_gfp_mask);
 	saved_gfp_mask = gfp_allowed_mask;
-	gfp_allowed_mask &= ~GFP_IOFS;
+	gfp_allowed_mask &= ~(__GFP_IO | __GFP_FS);
 }
 
 bool pm_suspended_storage(void)
 {
-	if ((gfp_allowed_mask & GFP_IOFS) == GFP_IOFS)
+	if ((gfp_allowed_mask & (__GFP_IO | __GFP_FS)) == (__GFP_IO | __GFP_FS))
 		return false;
 	return true;
 }
@@ -1318,22 +1318,6 @@ retry_reserve:
 	return page;
 }
 
-#ifdef CONFIG_CMA
-static struct page *__rmqueue_cma(struct zone *zone, unsigned int order)
-{
-	struct page *page = 0;
-	if (IS_ENABLED(CONFIG_CMA))
-		if (!zone->cma_alloc)
-			page = __rmqueue_smallest(zone, order, MIGRATE_CMA);
-	return page;
-}
-#else
-static inline struct page *__rmqueue_cma(struct zone *zone, unsigned int order)
-{
-	return NULL;
-}
-#endif
-
 /*
  * Obtain a specified number of elements from the buddy allocator, all under
  * a single hold of the lock, for efficiency.  Add them to the supplied list.
@@ -1347,17 +1331,7 @@ static int rmqueue_bulk(struct zone *zone, unsigned int order,
 
 	spin_lock(&zone->lock);
 	for (i = 0; i < count; ++i) {
-		struct page *page;
-
-		/*
-		 * If migrate type CMA is being requested only try to
-		 * satisfy the request with CMA pages to try and increase
-		 * CMA utlization.
-		 */
-		if (is_migrate_cma(migratetype))
-			page = __rmqueue_cma(zone, order);
-		else
-			page = __rmqueue(zone, order, migratetype);
+		struct page *page = __rmqueue(zone, order, migratetype);
 		if (unlikely(page == NULL))
 			break;
 
@@ -1382,28 +1356,6 @@ static int rmqueue_bulk(struct zone *zone, unsigned int order,
 	__mod_zone_page_state(zone, NR_FREE_PAGES, -(i << order));
 	spin_unlock(&zone->lock);
 	return i;
-}
-
-/*
- * Return the pcp list that corresponds to the migrate type if that list isn't
- * empty.
- * If the list is empty return NULL.
- */
-static struct list_head *get_populated_pcp_list(struct zone *zone,
-			unsigned int order, struct per_cpu_pages *pcp,
-			int migratetype, int cold)
-{
-	struct list_head *list = &pcp->lists[migratetype];
-
-	if (list_empty(list)) {
-		pcp->count += rmqueue_bulk(zone, order,
-				pcp->batch, list,
-				migratetype, cold);
-
-		if (list_empty(list))
-			list = NULL;
-	}
-	return list;
 }
 
 #ifdef CONFIG_NUMA
@@ -1575,7 +1527,8 @@ void free_hot_cold_page(struct page *page, bool cold)
 	 * excessively into the page allocator
 	 */
 	if (migratetype >= MIGRATE_PCPTYPES) {
-		if (unlikely(is_migrate_isolate(migratetype))) {
+		if (unlikely(is_migrate_isolate(migratetype)) ||
+			     is_migrate_cma(migratetype)) {
 			free_one_page(zone, page, pfn, 0, migratetype);
 			goto out;
 		}
@@ -1720,33 +1673,22 @@ struct page *buffered_rmqueue(struct zone *preferred_zone,
 			gfp_t gfp_flags, int migratetype)
 {
 	unsigned long flags;
-	struct page *page = NULL;
+	struct page *page;
 	bool cold = ((gfp_flags & __GFP_COLD) != 0);
 
 again:
 	if (likely(order == 0)) {
 		struct per_cpu_pages *pcp;
-		struct list_head *list = NULL;
+		struct list_head *list;
 
 		local_irq_save(flags);
 		pcp = &this_cpu_ptr(zone->pageset)->pcp;
-
-		/* First try to get CMA pages */
-		if (migratetype == MIGRATE_MOVABLE &&
-			gfp_flags & __GFP_CMA) {
-			list = get_populated_pcp_list(zone, 0, pcp,
-					get_cma_migrate_type(), cold);
-		}
-
-		if (list == NULL) {
-			/*
-			 * Either CMA is not suitable or there are no free CMA
-			 * pages.
-			 */
-			list = get_populated_pcp_list(zone, 0, pcp,
-				migratetype, cold);
-			if (unlikely(list == NULL) ||
-				unlikely(list_empty(list)))
+		list = &pcp->lists[migratetype];
+		if (list_empty(list)) {
+			pcp->count += rmqueue_bulk(zone, 0,
+					pcp->batch, list,
+					migratetype, cold);
+			if (unlikely(list_empty(list)))
 				goto failed;
 		}
 
@@ -1772,12 +1714,7 @@ again:
 			WARN_ON_ONCE(order > 1);
 		}
 		spin_lock_irqsave(&zone->lock, flags);
-		if (migratetype == MIGRATE_MOVABLE && gfp_flags & __GFP_CMA)
-			page = __rmqueue_cma(zone, order);
-
-		if (!page)
-			page = __rmqueue(zone, order, migratetype);
-
+		page = __rmqueue(zone, order, migratetype);
 		spin_unlock(&zone->lock);
 		if (!page)
 			goto failed;
@@ -1833,7 +1770,7 @@ static bool should_fail_alloc_page(gfp_t gfp_mask, unsigned int order)
 		return false;
 	if (fail_page_alloc.ignore_gfp_highmem && (gfp_mask & __GFP_HIGHMEM))
 		return false;
-	if (fail_page_alloc.ignore_gfp_wait && (gfp_mask & __GFP_WAIT))
+	if (fail_page_alloc.ignore_gfp_wait && (gfp_mask & __GFP_DIRECT_RECLAIM))
 		return false;
 
 	return should_fail(&fail_page_alloc.attr, 1 << order);
@@ -2353,7 +2290,7 @@ void warn_alloc_failed(gfp_t gfp_mask, unsigned int order, const char *fmt, ...)
 		if (test_thread_flag(TIF_MEMDIE) ||
 		    (current->flags & (PF_MEMALLOC | PF_EXITING)))
 			filter &= ~SHOW_MEM_FILTER_NODES;
-	if (in_interrupt() || !(gfp_mask & __GFP_WAIT))
+	if (in_interrupt() || !(gfp_mask & __GFP_DIRECT_RECLAIM))
 		filter &= ~SHOW_MEM_FILTER_NODES;
 
 	if (fmt) {
@@ -2676,7 +2613,6 @@ static inline int
 gfp_to_alloc_flags(gfp_t gfp_mask)
 {
 	int alloc_flags = ALLOC_WMARK_MIN | ALLOC_CPUSET;
-	const bool atomic = !(gfp_mask & (__GFP_WAIT | __GFP_NO_KSWAPD));
 
 	/* __GFP_HIGH is assumed to be the same as ALLOC_HIGH to save a branch. */
 	BUILD_BUG_ON(__GFP_HIGH != (__force gfp_t) ALLOC_HIGH);
@@ -2685,11 +2621,11 @@ gfp_to_alloc_flags(gfp_t gfp_mask)
 	 * The caller may dip into page reserves a bit more if the caller
 	 * cannot run direct reclaim, or if the caller has realtime scheduling
 	 * policy or is asking for __GFP_HIGH memory.  GFP_ATOMIC requests will
-	 * set both ALLOC_HARDER (atomic == true) and ALLOC_HIGH (__GFP_HIGH).
+	 * set both ALLOC_HARDER (__GFP_ATOMIC) and ALLOC_HIGH (__GFP_HIGH).
 	 */
 	alloc_flags |= (__force int) (gfp_mask & __GFP_HIGH);
 
-	if (atomic) {
+	if (gfp_mask & __GFP_ATOMIC) {
 		/*
 		 * Not worth trying to allocate harder for __GFP_NOMEMALLOC even
 		 * if it can't schedule.
@@ -2726,13 +2662,18 @@ bool gfp_pfmemalloc_allowed(gfp_t gfp_mask)
 	return !!(gfp_to_alloc_flags(gfp_mask) & ALLOC_NO_WATERMARKS);
 }
 
+static inline bool is_thp_gfp_mask(gfp_t gfp_mask)
+{
+	return (gfp_mask & (GFP_TRANSHUGE | __GFP_KSWAPD_RECLAIM)) == GFP_TRANSHUGE;
+}
+
 static inline struct page *
 __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	struct zonelist *zonelist, enum zone_type high_zoneidx,
 	nodemask_t *nodemask, struct zone *preferred_zone,
 	int classzone_idx, int migratetype)
 {
-	const gfp_t wait = gfp_mask & __GFP_WAIT;
+	bool can_direct_reclaim = gfp_mask & __GFP_DIRECT_RECLAIM;
 	struct page *page = NULL;
 	int alloc_flags;
 	unsigned long pages_reclaimed = 0;
@@ -2740,6 +2681,8 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 	enum migrate_mode migration_mode = MIGRATE_ASYNC;
 	bool deferred_compaction = false;
 	int contended_compaction = COMPACT_CONTENDED_NONE;
+	pg_data_t *pgdat = preferred_zone->zone_pgdat;
+	bool woke_kswapd = false;
 
 	/*
 	 * In the slowpath, we sanity check order to avoid ever trying to
@@ -2751,6 +2694,14 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 		WARN_ON_ONCE(!(gfp_mask & __GFP_NOWARN));
 		return NULL;
 	}
+
+	/*
+	 * We also sanity check to catch abuse of atomic reserves being used by
+	 * callers that are not in atomic context.
+	 */
+	if (WARN_ON_ONCE((gfp_mask & (__GFP_ATOMIC|__GFP_DIRECT_RECLAIM)) ==
+				(__GFP_ATOMIC|__GFP_DIRECT_RECLAIM)))
+		gfp_mask &= ~__GFP_ATOMIC;
 
 	/*
 	 * GFP_THISNODE (meaning __GFP_THISNODE, __GFP_NORETRY and
@@ -2765,9 +2716,14 @@ __alloc_pages_slowpath(gfp_t gfp_mask, unsigned int order,
 		goto nopage;
 
 restart:
-	if (!(gfp_mask & __GFP_NO_KSWAPD))
+	if (gfp_mask & __GFP_KSWAPD_RECLAIM) {
+		if (!woke_kswapd) {
+			atomic_inc(&pgdat->kswapd_waiters);
+			woke_kswapd = true;
+		}
 		wake_all_kswapds(order, zonelist, high_zoneidx,
 				preferred_zone, nodemask);
+	}
 
 	/*
 	 * OK, we're below the kswapd watermark and have kicked background
@@ -2812,8 +2768,8 @@ rebalance:
 		}
 	}
 
-	/* Atomic allocations - we can't balance anything */
-	if (!wait) {
+	/* Caller is not willing to reclaim, we can't balance anything */
+	if (!can_direct_reclaim) {
 		/*
 		 * All existing users of the deprecated __GFP_NOFAIL are
 		 * blockable, so warn of any new users that actually allow this
@@ -2847,7 +2803,7 @@ rebalance:
 		goto got_pg;
 
 	/* Checks for THP-specific high-order allocations */
-	if ((gfp_mask & GFP_TRANSHUGE) == GFP_TRANSHUGE) {
+	if (is_thp_gfp_mask(gfp_mask)) {
 		/*
 		 * If compaction is deferred for high-order allocations, it is
 		 * because sync compaction recently failed. If this is the case
@@ -2882,8 +2838,7 @@ rebalance:
 	 * fault, so use asynchronous memory compaction for THP unless it is
 	 * khugepaged trying to collapse.
 	 */
-	if ((gfp_mask & GFP_TRANSHUGE) != GFP_TRANSHUGE ||
-						(current->flags & PF_KTHREAD))
+	if (!is_thp_gfp_mask(gfp_mask) || (current->flags & PF_KTHREAD))
 		migration_mode = MIGRATE_SYNC_LIGHT;
 
 	/* Try direct reclaim and then allocating */
@@ -2961,9 +2916,11 @@ rebalance:
 	}
 
 nopage:
-	warn_alloc_failed(gfp_mask, order, NULL);
-	return page;
 got_pg:
+	if (woke_kswapd)
+		atomic_dec(&pgdat->kswapd_waiters);
+	if (!page)
+		warn_alloc_failed(gfp_mask, order, NULL);
 	if (kmemcheck_enabled)
 		kmemcheck_pagealloc_alloc(page, order, gfp_mask);
 
@@ -2990,7 +2947,7 @@ __alloc_pages_nodemask(gfp_t gfp_mask, unsigned int order,
 
 	lockdep_trace_alloc(gfp_mask);
 
-	might_sleep_if(gfp_mask & __GFP_WAIT);
+	might_sleep_if(gfp_mask & __GFP_DIRECT_RECLAIM);
 
 	if (should_fail_alloc_page(gfp_mask, order))
 		return NULL;
@@ -5032,6 +4989,7 @@ static void __paginginit free_area_init_core(struct pglist_data *pgdat,
 	init_waitqueue_head(&pgdat->kswapd_wait);
 	init_waitqueue_head(&pgdat->pfmemalloc_wait);
 	pgdat_page_cgroup_init(pgdat);
+	pgdat->kswapd_waiters = (atomic_t)ATOMIC_INIT(0);
 
 	for (j = 0; j < MAX_NR_ZONES; j++) {
 		struct zone *zone = pgdat->node_zones + j;
@@ -6573,8 +6531,6 @@ int alloc_contig_range(unsigned long start, unsigned long end,
 	if (ret)
 		return ret;
 
-	cc.zone->cma_alloc = 1;
-
 	ret = __alloc_contig_migrate_range(&cc, start, end);
 	if (ret)
 		goto done;
@@ -6633,7 +6589,6 @@ int alloc_contig_range(unsigned long start, unsigned long end,
 done:
 	undo_isolate_page_range(pfn_max_align_down(start),
 				pfn_max_align_up(end), migratetype);
-	cc.zone->cma_alloc = 0;
 	return ret;
 }
 

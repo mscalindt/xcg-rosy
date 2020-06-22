@@ -158,7 +158,7 @@ static void *ima_alloc_pages(loff_t max_size, size_t *allocated_size,
 {
 	void *ptr;
 	int order = ima_maxorder;
-	gfp_t gfp_mask = __GFP_WAIT | __GFP_NOWARN | __GFP_NORETRY;
+	gfp_t gfp_mask = __GFP_DIRECT_RECLAIM | __GFP_NOWARN | __GFP_NORETRY;
 
 	if (order)
 		order = min(get_order(max_size), order);
