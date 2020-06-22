@@ -22,4 +22,15 @@ config ARM_DT_OVERLAY_ROSY
 
 	  If unsure, say Y.
 
+config LAST_KMSG_ROSY
+	bool "Last kernel messages interface"
+	select PSTORE
+	select PSTORE_CONSOLE
+	help
+	  Say Y here to enable pstore interface used for storing the
+	  last kernel messages. The interface is located in
+	  /proc/last_kmsg
+
+	  If unsure, say Y.
+
 endmenu
