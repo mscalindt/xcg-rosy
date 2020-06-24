@@ -627,6 +627,13 @@ struct dentry *debugfs_rename(struct dentry *old_dir, struct dentry *old_dentry,
 	struct dentry *dentry = NULL, *trap;
 	struct name_snapshot old_name;
 
+	if (IS_ERR(old_dir))
+		return old_dir;
+	if (IS_ERR(new_dir))
+		return new_dir;
+	if (IS_ERR_OR_NULL(old_dentry))
+		return old_dentry;
+
 	trap = lock_rename(new_dir, old_dir);
 	/* Source or destination directories don't exist? */
 	if (!old_dir->d_inode || !new_dir->d_inode)
@@ -673,20 +680,17 @@ bool debugfs_initialized(void)
 }
 EXPORT_SYMBOL_GPL(debugfs_initialized);
 
-
-static struct kobject *debug_kobj;
-
 static int __init debugfs_init(void)
 {
 	int retval;
 
-	debug_kobj = kobject_create_and_add("debug", kernel_kobj);
-	if (!debug_kobj)
-		return -EINVAL;
+	retval = sysfs_create_mount_point(kernel_kobj, "debug");
+	if (retval)
+		return retval;
 
 	retval = register_filesystem(&debug_fs_type);
 	if (retval)
-		kobject_put(debug_kobj);
+		sysfs_remove_mount_point(kernel_kobj, "debug");
 	else
 		debugfs_registered = true;
 

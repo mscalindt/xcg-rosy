@@ -944,6 +944,7 @@ static int unmap_and_move(new_page_t get_new_page, free_page_t put_new_page,
 	int rc = 0;
 	int *result = NULL;
 	struct page *newpage = get_new_page(page, private, &result);
+	bool is_lru = !isolated_balloon_page(page);
 
 	if (!newpage)
 		return -ENOMEM;
@@ -976,12 +977,14 @@ out:
 	/*
 	 * If migration was not successful and there's a freeing callback, use
 	 * it.  Otherwise, putback_lru_page() will drop the reference grabbed
-	 * during isolation.
+	 * during isolation. Use the old state of the isolated source page to
+	 * determine if we migrated a LRU page. newpage was already unlocked
+	 * and possibly modified by its owner - don't rely on the page state.
 	 */
 	if (rc != MIGRATEPAGE_SUCCESS && put_new_page) {
 		ClearPageSwapBacked(newpage);
 		put_new_page(newpage, private);
-	} else if (unlikely(__is_movable_balloon_page(newpage))) {
+	} else if (rc == MIGRATEPAGE_SUCCESS && unlikely(!is_lru)) {
 		/* drop our reference, page already in the balloon */
 		put_page(newpage);
 	} else
@@ -1048,6 +1051,16 @@ static int unmap_and_move_huge_page(new_page_t get_new_page,
 		lock_page(hpage);
 	}
 
+	/*
+	 * Check for pages which are in the process of being freed.  Without
+	 * page_mapping() set, hugetlbfs specific move page routine will not
+	 * be called and we could leak usage counts for subpools.
+	 */
+	if (page_private(hpage) && !page_mapping(hpage)) {
+		rc = -EBUSY;
+		goto out_unlock;
+	}
+
 	if (PageAnon(hpage))
 		anon_vma = page_get_anon_vma(hpage);
 
@@ -1066,6 +1079,7 @@ static int unmap_and_move_huge_page(new_page_t get_new_page,
 	if (rc == MIGRATEPAGE_SUCCESS)
 		hugetlb_cgroup_migrate(hpage, new_hpage);
 
+out_unlock:
 	unlock_page(hpage);
 out:
 	if (rc != -EAGAIN)
@@ -1079,7 +1093,7 @@ out:
 	if (rc != MIGRATEPAGE_SUCCESS && put_new_page)
 		put_new_page(new_hpage, private);
 	else
-		put_page(new_hpage);
+		putback_active_hugepage(new_hpage);
 
 	if (result) {
 		if (rc)
@@ -1591,7 +1605,7 @@ static struct page *alloc_misplaced_dst_page(struct page *page,
 					 (GFP_HIGHUSER_MOVABLE |
 					  __GFP_THISNODE | __GFP_NOMEMALLOC |
 					  __GFP_NORETRY | __GFP_NOWARN) &
-					 ~GFP_IOFS, 0);
+					 ~(__GFP_IO | __GFP_FS), 0);
 
 	return newpage;
 }
@@ -1791,7 +1805,7 @@ int migrate_misplaced_transhuge_page(struct mm_struct *mm,
 		goto out_dropref;
 
 	new_page = alloc_pages_node(node,
-		(GFP_TRANSHUGE | __GFP_THISNODE) & ~__GFP_WAIT,
+		(GFP_TRANSHUGE | __GFP_THISNODE) & ~__GFP_DIRECT_RECLAIM,
 		HPAGE_PMD_ORDER);
 	if (!new_page)
 		goto out_fail;

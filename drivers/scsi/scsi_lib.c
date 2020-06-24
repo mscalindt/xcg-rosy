@@ -220,13 +220,13 @@ int scsi_execute(struct scsi_device *sdev, const unsigned char *cmd,
 	int write = (data_direction == DMA_TO_DEVICE);
 	int ret = DRIVER_ERROR << 24;
 
-	req = blk_get_request(sdev->request_queue, write, __GFP_WAIT);
+	req = blk_get_request(sdev->request_queue, write, __GFP_DIRECT_RECLAIM);
 	if (IS_ERR(req))
 		return ret;
 	blk_rq_set_block_pc(req);
 
 	if (bufflen &&	blk_rq_map_kern(sdev->request_queue, req,
-					buffer, bufflen, __GFP_WAIT))
+					buffer, bufflen, __GFP_DIRECT_RECLAIM))
 		goto out;
 
 	req->cmd_len = COMMAND_SIZE(cmd[0]);
@@ -616,7 +616,7 @@ static int scsi_alloc_sgtable(struct scsi_data_buffer *sdb, int nents,
 	}
 
 	ret = __sg_alloc_table(&sdb->table, nents, SCSI_MAX_SG_SEGMENTS,
-			       first_chunk, gfp_mask, scsi_sg_alloc);
+			       first_chunk, GFP_ATOMIC, scsi_sg_alloc);
 	if (unlikely(ret))
 		scsi_free_sgtable(sdb, mq);
 	return ret;

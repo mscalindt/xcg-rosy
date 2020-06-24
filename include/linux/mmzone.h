@@ -37,8 +37,10 @@
 
 enum {
 	MIGRATE_UNMOVABLE,
-	MIGRATE_RECLAIMABLE,
 	MIGRATE_MOVABLE,
+	MIGRATE_RECLAIMABLE,
+	MIGRATE_PCPTYPES,	/* the number of types on the pcp lists */
+	MIGRATE_RESERVE = MIGRATE_PCPTYPES,
 #ifdef CONFIG_CMA
 	/*
 	 * MIGRATE_CMA migration type is designed to mimic the way
@@ -55,8 +57,6 @@ enum {
 	 */
 	MIGRATE_CMA,
 #endif
-	MIGRATE_PCPTYPES, /* the number of types on the pcp lists */
-	MIGRATE_RESERVE = MIGRATE_PCPTYPES,
 #ifdef CONFIG_MEMORY_ISOLATION
 	MIGRATE_ISOLATE,	/* can't allocate from here */
 #endif
@@ -74,12 +74,10 @@ extern int *get_migratetype_fallbacks(int mtype);
 #ifdef CONFIG_CMA
 bool is_cma_pageblock(struct page *page);
 #  define is_migrate_cma(migratetype) unlikely((migratetype) == MIGRATE_CMA)
-#  define get_cma_migrate_type() MIGRATE_CMA
 #  define is_migrate_cma_page(_page) (get_pageblock_migratetype(_page) == MIGRATE_CMA)
 #else
 #  define is_cma_pageblock(page) false
 #  define is_migrate_cma(migratetype) false
-#  define get_cma_migrate_type() MIGRATE_MOVABLE
 #  define is_migrate_cma_page(_page) false
 #endif
 
@@ -374,9 +372,6 @@ struct zone {
 	 * considered dirtyable memory.
 	 */
 	unsigned long		dirty_balance_reserve;
-#ifdef CONFIG_CMA
-	bool			cma_alloc;
-#endif
 
 #ifndef CONFIG_SPARSEMEM
 	/*
@@ -766,6 +761,7 @@ typedef struct pglist_data {
 	unsigned long node_spanned_pages; /* total size of physical page
 					     range, including holes */
 	int node_id;
+	atomic_t kswapd_waiters;
 	wait_queue_head_t kswapd_wait;
 	wait_queue_head_t pfmemalloc_wait;
 	struct task_struct *kswapd;	/* Protected by
