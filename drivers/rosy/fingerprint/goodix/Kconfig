@@ -1,0 +1,7 @@
+config GF3208_ROSY
+	tristate "GF3208 fingerprint driver"
+	depends on FINGERPRINT_ROSY
+	help
+	  Say Y here to compile fingerprint drivers for Goodix GF3208.
+
+	  If unsure, say Y.
