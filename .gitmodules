@@ -2,3 +2,7 @@
 	path = fs/sdfat
 	url = https://github.com/mscalindt/kernel-sdfat.git
 	branch = master
+[submodule "drivers/staging/prima"]
+	path = drivers/staging/prima
+	url = https://github.com/mscalindt/android-vendor-qcom-opensource-wlan-prima.git
+	branch = LA.UM.8.6.r1-04600-89xx.0
