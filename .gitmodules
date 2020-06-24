@@ -1,0 +1,4 @@
+[submodule "fs/sdfat"]
+	path = fs/sdfat
+	url = https://github.com/mscalindt/kernel-sdfat.git
+	branch = master
