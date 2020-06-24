@@ -1,12 +1,8 @@
 ```
-Changelog v4.3.0:
+Changelog v4.3.1:
 
-- Wireguard version 1.0.20200611
-- Imported missing USB (power-related) code from riva-o-oss.
-- Re-upstream from 3.18.124 (LA.UM.8.6.r1-04400-89xx.0) to 3.18.140 (to fix some mismerges).
-- Custom upstream (basically backports) of small parts of the FS subsystem.
-- Support for all FAT-based filesystems.
-- RW support for NTFS.
-- KCAL support.
-- Miscellaneous fixes.
+- CAF tag LA.UM.8.6.r1-04600-89xx.0 for kernel (no changes affecting rosy).
+- CAF tag LA.UM.8.6.r1-04600-89xx.0 for prima.
+- Wireguard version 1.0.20200623
+- Fixed boot issue on 2 GB rosy variant.
 ```
