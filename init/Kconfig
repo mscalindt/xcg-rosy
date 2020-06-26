@@ -1397,13 +1397,29 @@ source "usr/Kconfig"
 
 endif
 
+choice
+	prompt "Compiler optimization level"
+	default CC_OPTIMIZE_FOR_PERFORMANCE_O2
+
 config CC_OPTIMIZE_FOR_SIZE
 	bool "Optimize for size"
 	help
-	  Enabling this option will pass "-Os" instead of "-O2" to gcc
-	  resulting in a smaller kernel.
+	  Enabling this option will pass "-Os" to gcc resulting in a
+	  smaller kernel.
 
-	  If unsure, say N.
+config CC_OPTIMIZE_FOR_PERFORMANCE_O2
+	bool "Optimize for performance (O2)"
+	help
+	  Enabling this option will pass "-O2" to gcc resulting in better
+	  performance of the kernel. This is the default option.
+
+config CC_OPTIMIZE_FOR_PERFORMANCE_O3
+	bool "Optimize for performance (O3)"
+	help
+	  Enabling this option will pass "-O3" to gcc resulting in even
+	  better performance of the kernel. Can be unsafe.
+
+endchoice
 
 config SYSCTL
 	bool
