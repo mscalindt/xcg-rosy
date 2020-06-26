@@ -1934,7 +1934,7 @@ static int __init msm_smp2p_init(void)
 
 	log_ctx = ipc_log_context_create(NUM_LOG_PAGES, "smp2p", 0);
 	if (!log_ctx)
-		SMP2P_ERR("%s: unable to create log context\n", __func__);
+		SMP2P_DBG("%s: unable to create log context\n", __func__);
 
 	rc = platform_driver_register(&msm_smp2p_driver);
 	if (rc) {

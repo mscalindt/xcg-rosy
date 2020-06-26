@@ -366,7 +366,7 @@ static int probe(struct platform_device *pdev)
 							"devfreq_spdm", 0);
 
 	if (IS_ERR_OR_NULL(spdm_ipc_log_ctxt)) {
-		pr_err("%s: Failed to create IPC log context\n", __func__);
+		pr_debug("%s: Failed to create IPC log context\n", __func__);
 		spdm_ipc_log_ctxt = NULL;
 	}
 
