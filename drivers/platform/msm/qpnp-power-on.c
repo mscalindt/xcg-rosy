@@ -1,4 +1,5 @@
 /* Copyright (c) 2012-2018, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -31,6 +32,8 @@
 #include <linux/qpnp/power-on.h>
 #include <linux/qpnp/qpnp-pbs.h>
 #include <linux/qpnp-misc.h>
+#include <linux/hardware_info.h>
+#include <asm/bootinfo.h>
 
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
@@ -70,6 +73,7 @@
 	((pon)->base + PON_OFFSET((pon)->subtype, 0xA, 0xC2))
 #define QPNP_POFF_REASON1(pon) \
 	((pon)->base + PON_OFFSET((pon)->subtype, 0xC, 0xC5))
+#define QPNP_POFF_REASON2(pon)			((pon)->base + 0xD)
 #define QPNP_PON_WARM_RESET_REASON2(pon)	((pon)->base + 0xB)
 #define QPNP_PON_OFF_REASON(pon)		((pon)->base + 0xC7)
 #define QPNP_FAULT_REASON1(pon)			((pon)->base + 0xC8)
@@ -161,6 +165,8 @@
 
 /* Wakeup event timeout */
 #define WAKEUP_TIMEOUT_MSEC			3000
+
+extern char board_id[HARDWARE_MAX_ITEM_LONGTH];
 
 enum qpnp_pon_version {
 	QPNP_PON_GEN1_V1,
@@ -371,6 +377,8 @@ int qpnp_pon_set_restart_reason(enum pon_restart_reason reason)
 	if (!pon->store_hard_reset_reason)
 		return 0;
 
+	pr_info("pon_restart_reason=0x%x\n", reason);
+
 	rc = qpnp_pon_masked_write(pon, QPNP_PON_SOFT_RB_SPARE(pon),
 					PON_MASK(7, 2), (reason << 2));
 	if (rc)
@@ -508,6 +516,58 @@ qpnp_get_cfg(struct qpnp_pon *pon, u32 pon_type)
 }
 
 static DEVICE_ATTR(debounce_us, 0664, qpnp_pon_dbc_show, qpnp_pon_dbc_store);
+
+static ssize_t qpnp_kpdpwr_reset_show(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	u8 val;
+	int rc;
+	struct qpnp_pon *pon = dev_get_drvdata(dev);
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				     QPNP_PON_KPDPWR_S2_CNTL2(pon), &val, 1);
+	if (rc) {
+		dev_err(&pon->spmi->dev, "Unable to pon_dbc_ctl rc=%d\n", rc);
+		return rc;
+	}
+
+	val &= QPNP_PON_S2_RESET_ENABLE;
+	val = val >> 7;
+
+	return snprintf(buf, QPNP_PON_BUFFER_SIZE, "%d\n", val);
+}
+
+static ssize_t qpnp_kpdpwr_reset_store(struct device *dev,
+				       struct device_attribute *attr,
+				       const char *buf, size_t size)
+{
+	u32 value;
+	int rc;
+	struct qpnp_pon *pon = dev_get_drvdata(dev);
+
+	if (size > QPNP_PON_BUFFER_SIZE)
+		return -EINVAL;
+
+	rc = kstrtou32(buf, 10, &value);
+	if (rc)
+		return rc;
+
+	value = value << 7;
+
+	pr_info("%s: value=%d\n", __func__, value);
+
+	rc = qpnp_pon_masked_write(pon, QPNP_PON_KPDPWR_S2_CNTL2(pon),
+				   QPNP_PON_S2_RESET_ENABLE, value);
+	if (rc) {
+		dev_err(&pon->spmi->dev, "Unable to configure kpdpwr reset\n");
+		return rc;
+	}
+
+	return size;
+}
+
+static DEVICE_ATTR(kpdpwr_reset, 0664, qpnp_kpdpwr_reset_show,
+		   qpnp_kpdpwr_reset_store);
 
 #define PON_TWM_ENTRY_PBS_BIT		BIT(0)
 static int qpnp_pon_reset_config(struct qpnp_pon *pon,
@@ -675,6 +735,70 @@ int qpnp_pon_is_warm_reset(void)
 		return pon->warm_reset_reason1;
 }
 EXPORT_SYMBOL(qpnp_pon_is_warm_reset);
+
+int qpnp_pon_is_ps_hold_reset(void)
+{
+	int rc;
+	u8 reg = 0;
+	struct qpnp_pon *pon = sys_reset_dev;
+
+	if (!pon)
+		return 0;
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				     QPNP_POFF_REASON1(pon), &reg, 1);
+	if (rc) {
+		dev_err(&pon->spmi->dev, "Unable to read addr=%x, rc(%d)\n",
+			QPNP_POFF_REASON1(pon), rc);
+		return 0;
+	}
+
+	/* The bit 1 is 1, means by PS_HOLD/MSM controlled shutdown */
+	if (reg & 0x2)
+		return 1;
+
+	dev_info(&pon->spmi->dev, "hw_reset reason1 is 0x%x\n", reg);
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				     QPNP_POFF_REASON2(pon), &reg, 1);
+
+	dev_info(&pon->spmi->dev, "hw_reset reason2 is 0x%x\n", reg);
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_pon_is_ps_hold_reset);
+
+int qpnp_pon_is_lpk(void)
+{
+	int rc;
+	u8 reg = 0;
+	struct qpnp_pon *pon = sys_reset_dev;
+
+	if (!pon)
+		return 0;
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				     QPNP_POFF_REASON1(pon), &reg, 1);
+	if (rc) {
+		dev_err(&pon->spmi->dev, "Unable to read addr=%x, rc(%d)\n",
+			QPNP_POFF_REASON1(pon), rc);
+		return 0;
+	}
+
+
+	if (reg & 0x80)
+		return 1;
+
+	dev_info(&pon->spmi->dev, "hw_reset reason1 is 0x%x\n", reg);
+
+	rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+				     QPNP_POFF_REASON2(pon), &reg, 1);
+
+	dev_info(&pon->spmi->dev, "hw_reset reason2 is 0x%x\n", reg);
+
+	return 0;
+}
+EXPORT_SYMBOL(qpnp_pon_is_lpk);
 
 /**
  * qpnp_pon_wd_config - Disable the wd in a warm reset.
@@ -2046,6 +2170,35 @@ static int pon_register_twm_notifier(struct qpnp_pon *pon)
 	return rc;
 }
 
+void probe_board_and_set(void)
+{
+	char *boardid, *boardvol;
+	char boardid_info[HARDWARE_MAX_ITEM_LONGTH];
+
+	pr_info("%s: start", __func__);
+
+	boardid = strstr(saved_command_line, "board_id=");
+	boardvol = strstr(saved_command_line, "board_vol=");
+	memset(boardid_info, 0, HARDWARE_MAX_ITEM_LONGTH);
+
+	if (boardid != NULL) {
+		boardvol = strstr(boardid, ":board_vol=");
+		if (boardvol != NULL)
+			strncpy(boardid_info,
+				boardid+sizeof("board_id=")-1,
+				boardvol-(boardid+sizeof("board_id=")-1));
+		else
+			strncpy(boardid_info,
+				boardid+sizeof("board_id=")-1, 9);
+	} else {
+		sprintf(boardid_info, "board_id not defined!");
+	}
+
+	strcpy(board_id, boardid_info);
+
+	pr_info("%s: end", __func__);
+}
+
 static int qpnp_pon_probe(struct spmi_device *spmi)
 {
 	struct qpnp_pon *pon;
@@ -2213,6 +2366,7 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 				"PMIC@SID%d: Power-off reason: %s\n",
 				pon->spmi->sid,
 				qpnp_poff_reason[index]);
+		set_poweroff_reason(index);
 	}
 
 	if (pon->pon_trigger_reason == PON_SMPL ||
@@ -2400,6 +2554,12 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 		return rc;
 	}
 
+	rc = device_create_file(&spmi->dev, &dev_attr_kpdpwr_reset);
+	if (rc) {
+		dev_err(&spmi->dev, "sys file creation failed rc: %d\n", rc);
+		return rc;
+	}
+
 	if (of_property_read_bool(spmi->dev.of_node,
 					"qcom,pon-reset-off")) {
 		rc = qpnp_pon_trigger_config(PON_CBLPWR_N, false);
@@ -2429,6 +2589,9 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 					"qcom,store-hard-reset-reason");
 
 	qpnp_pon_debugfs_init(spmi);
+
+	probe_board_and_set();
+
 	return 0;
 }
 
