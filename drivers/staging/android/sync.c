@@ -535,6 +535,18 @@ static void sync_fence_signal_pt(struct sync_pt *pt)
 	}
 }
 
+bool sync_fence_signaled(struct sync_fence *fence)
+{
+	int ret;
+
+	ret = fence->status;
+	if (ret < 0)
+		ret = 0;
+
+	return ret;
+}
+EXPORT_SYMBOL(sync_fence_signaled);
+
 int sync_fence_wait_async(struct sync_fence *fence,
 			  struct sync_fence_waiter *waiter)
 {
@@ -782,7 +794,8 @@ static int sync_fill_pt_info(struct sync_pt *pt, void *data, int size)
 static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 					unsigned long arg)
 {
-	struct sync_fence_info_data *data;
+	u8 data_buf[4096] __aligned(sizeof(long));
+	struct sync_fence_info_data *data = (typeof(data))data_buf;
 	struct list_head *pos;
 	__u32 size;
 	__u32 len = 0;
@@ -796,10 +809,6 @@ static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 
 	if (size > 4096)
 		size = 4096;
-
-	data = kzalloc(size, GFP_KERNEL);
-	if (data == NULL)
-		return -ENOMEM;
 
 #ifdef CONFIG_SYNC_DEBUG
 	strlcpy(data->name, fence->name, sizeof(data->name));
@@ -827,7 +836,6 @@ static long sync_fence_ioctl_fence_info(struct sync_fence *fence,
 		ret = 0;
 
 out:
-	kfree(data);
 
 	return ret;
 }

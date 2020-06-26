@@ -1266,6 +1266,10 @@ static int mdp3_ppp_handle_buf_sync(struct blit_req_list *req,
 			ret = -EINVAL;
 			break;
 		}
+		if (sync_fence_signaled(fence)) {
+			ret = -EINVAL;
+			break;
+		}
 		req->acq_fen[i] = fence;
 	}
 	fence_cnt = i;
